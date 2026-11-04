@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="周煜淇个人发展路线图 — 每日打卡 · 近中远路径 · 迈向科技美股上市公司" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>周煜淇 · 发展路线图</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,500&family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <div class="bg-mesh" aria-hidden="true"></div>
+  <div class="bg-orbs" aria-hidden="true">
+    <span class="orb orb-a"></span>
+    <span class="orb orb-b"></span>
+    <span class="orb orb-c"></span>
+  </div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">✈</span>
+        <span class="brand-text">
+          <strong>周煜淇</strong>
+          <em>Louis &amp; Fly · 路线图</em>
+        </span>
+      </a>
+      <nav class="nav" aria-label="主导航">
+        <a href="#today">今日打卡</a>
+        <a href="#roadmap">路线图</a>
+        <a href="#week">周节奏</a>
+        <a href="#path">怎么到</a>
+      </nav>
+      <div class="topbar-meta">
+        <span class="tz-pill" id="clock-pill" title="Asia/Macau">澳门 · --:--</span>
+        <button type="button" class="lang-toggle" id="lang-toggle" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span> 个人发展操作系统 · 2026</p>
+          <h1 id="hero-title">
+            一步一步，走到<br />
+            <span class="gradient-text">科技美股上市公司</span>
+          </h1>
+          <p class="hero-lead" data-i18n="hero.lead">
+            近端锁死：冲进大型外贸公司实习（葡语／欧美市场）。中段用交付证明放大组织力。远端创办并带领一家科技公司登陆美股。每天打卡，把志向落成可勾选的行动。
+          </p>
+          <div class="hero-pills">
+            <span class="pill accent">① 外贸实习优先</span>
+            <span class="pill">② 创业傍晚轻量</span>
+            <span class="pill">③ 健身不占深工</span>
+          </div>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#today">今日打卡 →</a>
+            <a class="btn btn-ghost" href="#roadmap">看全景路线</a>
+          </div>
+        </div>
+        <aside class="hero-card" aria-label="今日进度速览">
+          <div class="ring-wrap">
+            <svg class="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-track" cx="60" cy="60" r="52" />
+              <circle class="ring-value" id="hero-ring" cx="60" cy="60" r="52" />
+            </svg>
+            <div class="ring-label">
+              <strong id="hero-pct">0%</strong>
+              <span>今日完成</span>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <div>
+              <strong id="streak-count">0</strong>
+              <span>连续打卡天</span>
+            </div>
+            <div>
+              <strong id="week-done">0/7</strong>
+              <span>本周活跃日</span>
+            </div>
+          </div>
+          <p class="hero-tip" id="hero-tip">勾完今日清单，环会亮起来。</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TODAY CHECK-IN -->
+    <section class="section" id="today" aria-labelledby="today-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">DAILY CHECK-IN</p>
+            <h2 id="today-title">今日行动 · <span id="today-label">—</span></h2>
+            <p class="section-sub" id="today-context">按课表自动排布深工窗口</p>
+          </div>
+          <button type="button" class="btn btn-soft" id="reset-today" title="仅清空今天的勾选">重置今日</button>
+        </div>
+
+        <div class="today-layout">
+          <div class="check-panel">
+            <ul class="task-list" id="task-list" role="list"></ul>
+            <div class="check-footer">
+              <p id="check-msg" class="check-msg">点一下，就算打卡。</p>
+              <button type="button" class="btn btn-primary" id="celebrate-btn" hidden>今日全清 · 庆祝一下 🎉</button>
+            </div>
+          </div>
+          <aside class="side-panel">
+            <div class="mini-card">
+              <h3>深工护栏</h3>
+              <p id="deep-guard">周五与周末上午：外贸实习长块，不给创业／健身挤占。</p>
+            </div>
+            <div class="mini-card">
+              <h3>近期可选节点</h3>
+              <ul class="event-list">
+                <li><time datetime="2026-11-07">11-07</time> PRAIA（Artyzen Lotus 2F）· 建议上午 · 不撞实习深工</li>
+                <li class="muted"><time datetime="2026-11-21">11-21</time> SCUT · 可选</li>
+                <li class="muted"><time datetime="2026-11-26">11-26～28</time> 高交会 · 可选</li>
+                <li class="muted"><time datetime="2026-12-02">12-02～04</time> CILF · 可选</li>
+              </ul>
+            </div>
+            <div class="mini-card streak-card">
+              <h3>近 7 日轨迹</h3>
+              <div class="streak-dots" id="streak-dots" aria-label="近七天打卡"></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROADMAP -->
+    <section class="section alt" id="roadmap" aria-labelledby="roadmap-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">THE PATH</p>
+            <h2 id="roadmap-title">近 → 中 → 远 · 怎么叠上去</h2>
+            <p class="section-sub">每一段不是「等以后」，而是给下一段交燃料。</p>
+          </div>
+        </div>
+
+        <ol class="path-track">
+          <li class="path-step near">
+            <div class="step-badge">近 0–3 月</div>
+            <h3>外贸实习核链</h3>
+            <p class="step-why">为什么现在：你的葡语＋欧美市场定位，在大型外贸公司最能被验证。社交与跨文化优势在这里会被放大成可写进简历的证据。</p>
+            <ul class="step-actions">
+              <li>公司对比清单（葡语／欧美线 Top 目标）</li>
+              <li>求职信／JD 对齐 · 投递与跟进节奏</li>
+              <li>询报价＋单证术语练手（Inquiry → PI → 单证一致）</li>
+              <li>周五／周末上午专属深工，课表不挤</li>
+            </ul>
+            <p class="step-fuel">→ 交给中段：真实客户沟通、跨文化协作、流程纪律的「交付证明」。</p>
+          </li>
+          <li class="path-step mid">
+            <div class="step-badge">中 3–12 月</div>
+            <h3>交付证明 + 组织力</h3>
+            <p class="step-why">为什么接着：实习里攒的贸易流程与客户信任，叠上 Numa／湾科汇／RFERP 的轻量交付，把「会社交」升级成「能带队出结果」。</p>
+            <ul class="step-actions">
+              <li>实习成果沉淀：案例、指标、推荐信素材</li>
+              <li>创业线保持傍晚轻量：线索表、演示半页、报价闭环</li>
+              <li>管理练习：分工、复盘、持续改进闭环</li>
+              <li>英葡持续升级，服务欧美客户与资本侧沟通</li>
+            </ul>
+            <p class="step-fuel">→ 交给远端：可复制的产品／服务飞轮 + 一支能打仗的小团队。</p>
+          </li>
+          <li class="path-step far">
+            <div class="step-badge">远 多年</div>
+            <h3>创办并带领科技美股公司</h3>
+            <p class="step-why">为什么够得着：发散思维与驱动力决定你会不断试错；欧洲一年的跨文化底盘，让你天然适合全球化叙事；资本市场要的是可验证增长与清晰治理——前两段正在攒这些。</p>
+            <ul class="step-actions">
+              <li>产品／市场匹配与可扩展交付</li>
+              <li>组织、治理、财务纪律成型</li>
+              <li>国际化客户与合作网络</li>
+              <li>资本叙事：增长故事讲得清、数据站得住</li>
+            </ul>
+            <p class="step-fuel">→ 终点不是「上市」四个字，而是你能带领一家被市场信任的科技公司。</p>
+          </li>
+        </ol>
+
+        <div class="compound-strip" role="note">
+          <strong>复利公式</strong>
+          <span>外贸深工技能</span>
+          <span class="arrow">→</span>
+          <span>可证明的交付</span>
+          <span class="arrow">→</span>
+          <span>组织 + 产品飞轮</span>
+          <span class="arrow">→</span>
+          <span>资本市场叙事</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- WEEKLY RHYTHM -->
+    <section class="section" id="week" aria-labelledby="week-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">WEEKLY RHYTHM</p>
+            <h2 id="week-title">一周怎么排 · 护住深工</h2>
+            <p class="section-sub">课表优先，实习窗口高亮；创业与健身绕开周五／周末上午。</p>
+          </div>
+        </div>
+        <div class="week-grid" id="week-grid"></div>
+        <p class="week-note">高亮块 = 外贸实习深工护栏。Movee／健身线与创业只走傍晚轻量档。</p>
+      </div>
+    </section>
+
+    <!-- HOW TO GET THERE -->
+    <section class="section alt" id="path" aria-labelledby="path-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">WHY THIS WEEK</p>
+            <h2 id="path-title">本周为什么重要 · 一步步拆</h2>
+            <p class="section-sub">把「美股科技公司」拆成你这周就能推进的毫米级动作。</p>
+          </div>
+        </div>
+
+        <div class="why-grid">
+          <article class="why-card">
+            <span class="why-num">01</span>
+            <h3>本周毫米目标</h3>
+            <p>推进 1～2 家目标外贸公司的 JD 对齐／求职信／投递或跟进；课前或午后短块即可，周五上午做长块冲刺。</p>
+          </article>
+          <article class="why-card">
+            <span class="why-num">02</span>
+            <h3>优势怎么用上</h3>
+            <p>社交与跨文化：面试和客户沟通里主动讲欧洲一年的碰撞。组织力：把投递跟进做成表格节奏。发散＋驱动：每周复盘一次「什么可以更好」。</p>
+          </article>
+          <article class="why-card">
+            <span class="why-num">03</span>
+            <h3>创业怎么不抢戏</h3>
+            <p>Numa／湾科汇／RFERP：傍晚轻量（线索表、半页、等 Gio 审）。A/B/C 技术闸不过线，不排广州当面。餐饮线暂停。Movee 顺延，不占实习深工。</p>
+          </article>
+          <article class="why-card">
+            <span class="why-num">04</span>
+            <h3>习惯就是飞轮</h3>
+            <p>葡语＋英语、健身、阅读、日记——不是装饰，是远程目标的燃料：语言服务欧美客户与资本沟通；健身稳住驱动；日记逼你持续改进。</p>
+          </article>
+        </div>
+
+        <div class="milestone-board">
+          <h3>里程碑看板</h3>
+          <ol>
+            <li><span class="ms-tag now">现在</span> 简历站与路线图站可用 · 每日打卡运转</li>
+            <li><span class="ms-tag">近</span> 拿到大型外贸公司实习 offer（葡语／欧美线）</li>
+            <li><span class="ms-tag">近→中</span> 实习中沉淀可公开案例 + 单证／询报价熟练</li>
+            <li><span class="ms-tag">中</span> 小团队稳定交付（创业线有可复述结果）</li>
+            <li><span class="ms-tag">远</span> 科技产品飞轮清晰 · 治理与增长叙事可对资本讲清</li>
+            <li><span class="ms-tag far">远</span> 带领公司走向美股市场</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- STRENGTHS -->
+    <section class="section" id="fuel" aria-labelledby="fuel-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="kicker">YOUR FUEL</p>
+            <h2 id="fuel-title">你的燃料 · 写进每天</h2>
+          </div>
+        </div>
+        <div class="fuel-grid">
+          <div class="fuel-chip">社交与管理</div>
+          <div class="fuel-chip">懂得组织</div>
+          <div class="fuel-chip">持续完善</div>
+          <div class="fuel-chip">发散思维</div>
+          <div class="fuel-chip">强驱动力</div>
+          <div class="fuel-chip">跨文化交流</div>
+          <div class="fuel-chip wide">欧洲旅居一年 · 思想碰撞</div>
+        </div>
+        <p class="fuel-note">兴趣：健身、设计。语言：英葡持续升。志向：创办并带领一家科技美股上市公司。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <p>周煜淇（Louis &amp; Fly）· 个人发展路线图 · 澳门时间</p>
+      <p class="muted">打卡数据存在本机浏览器 localStorage，换设备不会同步。</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
