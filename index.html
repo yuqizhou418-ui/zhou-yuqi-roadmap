@@ -38,6 +38,7 @@
       <nav class="nav" aria-label="主导航">
         <a href="#today">今日打卡</a>
         <a href="#roadmap">路线图</a>
+        <a href="#mindmap">思维导图</a>
         <a href="#week">周节奏</a>
         <a href="#path">怎么到</a>
       </nav>
@@ -199,6 +200,154 @@
           <span>组织 + 产品飞轮</span>
           <span class="arrow">→</span>
           <span>资本市场叙事</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- MIND MAP -->
+    <section class="section mindmap-section" id="mindmap" aria-labelledby="mindmap-title">
+      <div class="mindmap-bleed">
+        <div class="section-head">
+          <div>
+            <p class="kicker">MIND MAP</p>
+            <h2 id="mindmap-title">规划思维导图</h2>
+            <p class="section-sub" id="mindmap-sub">近、中、远整份计划一览：每日打卡、三条护栏、本周焦点、个人燃料、复利公式与里程碑。</p>
+          </div>
+          <div class="mindmap-toolbar" role="group" aria-label="导图缩放">
+            <button type="button" class="btn btn-soft" id="mindmap-zoom-out" aria-label="缩小">－</button>
+            <button type="button" class="btn btn-soft" id="mindmap-zoom-fit">适配</button>
+            <button type="button" class="btn btn-soft" id="mindmap-zoom-in" aria-label="放大">＋</button>
+          </div>
+        </div>
+
+        <div class="mindmap-frame">
+          <div class="mindmap-viewport" id="mindmap-viewport" tabindex="0" aria-label="规划思维导图。可拖拽平移，方向键移动焦点，加号减号缩放。">
+            <svg id="mindmap-svg" class="mindmap-svg" role="group" aria-labelledby="mindmap-title mindmap-sub"></svg>
+          </div>
+          <p class="mindmap-hint" id="mindmap-hint">拖拽平移 · 滚轮浏览 · 点节点看原文</p>
+          <div class="mindmap-detail" id="mindmap-detail" data-tone="root" aria-live="polite">
+            <p class="mindmap-crumb" id="mindmap-crumb">近 → 中 → 远</p>
+            <h3 id="mindmap-detail-title">点开节点，看这一支</h3>
+            <p id="mindmap-detail-body">高亮从中心连到叶子，文字与页面正文一致。</p>
+          </div>
+          <ul class="mindmap-legend" aria-hidden="true">
+            <li data-tone="near">近</li>
+            <li data-tone="mid">中</li>
+            <li data-tone="far">远</li>
+            <li data-tone="daily">每日</li>
+            <li data-tone="guard">护栏</li>
+            <li data-tone="milestone">里程碑</li>
+          </ul>
+        </div>
+
+        <div class="mindmap-source" id="mindmap-source">
+          <div class="mm-branch" data-id="root" data-tone="root">
+            <h3 class="mm-label">科技美股上市公司</h3>
+            <p class="mm-detail">近端锁死：冲进大型外贸公司实习（葡语／欧美市场）。中段用交付证明放大组织力。远端创办并带领一家科技公司登陆美股。每天打卡，把志向落成可勾选的行动。</p>
+          </div>
+          <div class="mm-kids">
+            <div class="mm-branch" data-id="near" data-tone="near">
+              <p class="mm-kicker">近 0–3 月</p>
+              <h3 class="mm-label">外贸实习核链</h3>
+              <p class="mm-detail">为什么现在：你的葡语＋欧美市场定位，在大型外贸公司最能被验证。社交与跨文化优势在这里会被放大成可写进简历的证据。交给中段：真实客户沟通、跨文化协作、流程纪律的「交付证明」。</p>
+              <ul class="mm-leaves">
+                <li data-id="near-list"><span class="mm-label">公司对比清单（葡语／欧美线 Top 目标）</span></li>
+                <li data-id="near-jd"><span class="mm-label">求职信／JD 对齐 · 投递与跟进节奏</span></li>
+                <li data-id="near-docs"><span class="mm-label">询报价＋单证术语练手（Inquiry → PI → 单证一致）</span></li>
+                <li data-id="near-deep"><span class="mm-label">周五／周末上午专属深工，课表不挤</span></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="mid" data-tone="mid">
+              <p class="mm-kicker">中 3–12 月</p>
+              <h3 class="mm-label">交付证明 + 组织力</h3>
+              <p class="mm-detail">为什么接着：实习里攒的贸易流程与客户信任，叠上 Numa／湾科汇／RFERP 的轻量交付，把「会社交」升级成「能带队出结果」。交给远端：可复制的产品／服务飞轮 + 一支能打仗的小团队。</p>
+              <ul class="mm-leaves">
+                <li data-id="mid-proof"><span class="mm-label">实习成果沉淀：案例、指标、推荐信素材</span></li>
+                <li data-id="mid-startup"><span class="mm-label">创业线保持傍晚轻量：线索表、演示半页、报价闭环</span></li>
+                <li data-id="mid-manage"><span class="mm-label">管理练习：分工、复盘、持续改进闭环</span></li>
+                <li data-id="mid-lang"><span class="mm-label">英葡持续升级，服务欧美客户与资本侧沟通</span></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="far" data-tone="far">
+              <p class="mm-kicker">远 多年</p>
+              <h3 class="mm-label">创办并带领科技美股公司</h3>
+              <p class="mm-detail">为什么够得着：发散思维与驱动力决定你会不断试错；欧洲一年的跨文化底盘，让你天然适合全球化叙事；资本市场要的是可验证增长与清晰治理——前两段正在攒这些。终点不是「上市」四个字，而是你能带领一家被市场信任的科技公司。</p>
+              <ul class="mm-leaves">
+                <li data-id="far-pmf"><span class="mm-label">产品／市场匹配与可扩展交付</span></li>
+                <li data-id="far-gov"><span class="mm-label">组织、治理、财务纪律成型</span></li>
+                <li data-id="far-net"><span class="mm-label">国际化客户与合作网络</span></li>
+                <li data-id="far-capital"><span class="mm-label">资本叙事：增长故事讲得清、数据站得住</span></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="daily" data-tone="daily">
+              <p class="mm-kicker">每天</p>
+              <h3 class="mm-label">每日打卡</h3>
+              <p class="mm-detail">每天打卡，把志向落成可勾选的行动。</p>
+              <ul class="mm-leaves">
+                <li data-id="daily-lang"><span class="mm-label">葡语 ＋ 英语</span><p class="mm-detail">晨间语言块（约 8:00–8:45）· 听说读写任选推进</p></li>
+                <li data-id="daily-fit"><span class="mm-label">健身</span><p class="mm-detail">晚间或上午空档 · 不占外贸深工护栏</p></li>
+                <li data-id="daily-trade"><span class="mm-label">外贸实习 · 深工</span><p class="mm-detail">周五与周末上午：外贸实习长块，不给创业／健身挤占。</p></li>
+                <li data-id="daily-read"><span class="mm-label">阅读</span><p class="mm-detail">下午或晚间阅读块 · 贸易／商业／跨文化任选</p></li>
+                <li data-id="daily-journal"><span class="mm-label">日记复盘</span><p class="mm-detail">约 21:00 · 写清今天推进了哪一毫米</p></li>
+                <li data-id="daily-startup"><span class="mm-label">创业轻量（有余力）</span><p class="mm-detail">傍晚：Numa／湾科汇／RFERP 线索或材料 · 不挤深工 · 餐饮暂停</p></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="guard" data-tone="guard">
+              <p class="mm-kicker">三条</p>
+              <h3 class="mm-label">三条护栏</h3>
+              <p class="mm-detail">周五与周末上午：外贸实习长块，不给创业／健身挤占。</p>
+              <ul class="mm-leaves">
+                <li data-id="guard-1"><span class="mm-label">① 外贸实习优先</span></li>
+                <li data-id="guard-2"><span class="mm-label">② 创业傍晚轻量</span></li>
+                <li data-id="guard-3"><span class="mm-label">③ 健身不占深工</span></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="week" data-tone="week">
+              <p class="mm-kicker">本周</p>
+              <h3 class="mm-label">本周毫米目标</h3>
+              <p class="mm-detail">把「美股科技公司」拆成你这周就能推进的毫米级动作。</p>
+              <ul class="mm-leaves">
+                <li data-id="week-mm"><span class="mm-label">推进 1～2 家目标外贸公司的 JD 对齐／求职信／投递或跟进；课前或午后短块即可，周五上午做长块冲刺。</span></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="fuel" data-tone="fuel">
+              <p class="mm-kicker">你的</p>
+              <h3 class="mm-label">个人燃料</h3>
+              <p class="mm-detail">兴趣：健身、设计。语言：英葡持续升。志向：创办并带领一家科技美股上市公司。</p>
+              <ul class="mm-leaves">
+                <li data-id="fuel-1"><span class="mm-label">社交与管理</span></li>
+                <li data-id="fuel-2"><span class="mm-label">懂得组织</span></li>
+                <li data-id="fuel-3"><span class="mm-label">持续完善</span></li>
+                <li data-id="fuel-4"><span class="mm-label">发散思维</span></li>
+                <li data-id="fuel-5"><span class="mm-label">强驱动力</span></li>
+                <li data-id="fuel-6"><span class="mm-label">跨文化交流</span></li>
+                <li data-id="fuel-7"><span class="mm-label">欧洲旅居一年 · 思想碰撞</span></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="compound" data-tone="compound">
+              <p class="mm-kicker">公式</p>
+              <h3 class="mm-label">复利公式</h3>
+              <p class="mm-detail">外贸深工技能 → 可证明的交付 → 组织 + 产品飞轮 → 资本市场叙事</p>
+              <ul class="mm-leaves">
+                <li data-id="compound-1"><span class="mm-label">外贸深工技能</span></li>
+                <li data-id="compound-2"><span class="mm-label">可证明的交付</span></li>
+                <li data-id="compound-3"><span class="mm-label">组织 + 产品飞轮</span></li>
+                <li data-id="compound-4"><span class="mm-label">资本市场叙事</span></li>
+              </ul>
+            </div>
+            <div class="mm-branch" data-id="milestones" data-tone="milestone">
+              <p class="mm-kicker">顺序</p>
+              <h3 class="mm-label">里程碑看板</h3>
+              <ul class="mm-leaves">
+                <li data-id="ms-1"><span class="mm-label">现在 · 简历站与路线图站可用 · 每日打卡运转</span></li>
+                <li data-id="ms-2"><span class="mm-label">近 · 拿到大型外贸公司实习 offer（葡语／欧美线）</span></li>
+                <li data-id="ms-3"><span class="mm-label">近→中 · 实习中沉淀可公开案例 + 单证／询报价熟练</span></li>
+                <li data-id="ms-4"><span class="mm-label">中 · 小团队稳定交付（创业线有可复述结果）</span></li>
+                <li data-id="ms-5"><span class="mm-label">远 · 科技产品飞轮清晰 · 治理与增长叙事可对资本讲清</span></li>
+                <li data-id="ms-6"><span class="mm-label">远 · 带领公司走向美股市场</span></li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </section>

@@ -500,3 +500,1046 @@
   // Expose for debug
   window.__roadmap = { store, dateKey, macauNow, tasks };
 })();
+
+/* Planning mind map — reads copy from #mindmap-source, draws SVG. */
+(function () {
+  "use strict";
+
+  const NS = "http://www.w3.org/2000/svg";
+  const LEFT = ["daily", "guard", "week", "fuel", "compound", "milestones"];
+  const RIGHT = ["near", "mid", "far"];
+  const STACK = ["near", "mid", "far", "daily", "guard", "week", "fuel", "compound", "milestones"];
+  const TONES = {
+    root: { color: "#ffb347", glow: "rgba(255,107,107,0.45)" },
+    near: { color: "#ff6b6b", glow: "rgba(255,107,107,0.48)" },
+    mid: { color: "#ffb347", glow: "rgba(255,179,71,0.45)" },
+    far: { color: "#2dd4bf", glow: "rgba(45,212,191,0.45)" },
+    daily: { color: "#a78bfa", glow: "rgba(167,139,250,0.48)" },
+    guard: { color: "#ff8e8e", glow: "rgba(255,142,142,0.45)" },
+    week: { color: "#ffb347", glow: "rgba(255,179,71,0.4)" },
+    fuel: { color: "#2dd4bf", glow: "rgba(45,212,191,0.42)" },
+    compound: { color: "#ffb347", glow: "rgba(255,179,71,0.4)" },
+    milestone: { color: "#c4b5fd", glow: "rgba(196,181,253,0.5)" },
+  };
+
+  const viewport = document.getElementById("mindmap-viewport");
+  const svg = document.getElementById("mindmap-svg");
+  const source = document.getElementById("mindmap-source");
+  const hint = document.getElementById("mindmap-hint");
+  const detailEl = document.getElementById("mindmap-detail");
+  const crumbEl = document.getElementById("mindmap-crumb");
+  const titleEl = document.getElementById("mindmap-detail-title");
+  const bodyEl = document.getElementById("mindmap-detail-body");
+  if (!viewport || !svg || !source || !detailEl) return;
+
+  const measureCtx = document.createElement("canvas").getContext("2d");
+  const byId = Object.create(null);
+  let root = null;
+  let edges = [];
+  let stacked = false;
+  let scale = 1;
+  let base = { w: 1, h: 1 };
+  let selectedId = null;
+  let lastW = 0;
+  let lastMode = "";
+
+  function el(name, attrs, parent) {
+    const node = document.createElementNS(NS, name);
+    if (attrs) {
+      Object.keys(attrs).forEach((key) => {
+        if (attrs[key] != null) node.setAttribute(key, String(attrs[key]));
+      });
+    }
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  function textOf(node) {
+    return node ? node.textContent.replace(/\s+/g, " ").trim() : "";
+  }
+
+  function readBranch(node) {
+    return {
+      id: node.dataset.id,
+      tone: node.dataset.tone || "",
+      kicker: textOf(node.querySelector(":scope > .mm-kicker")),
+      label: textOf(node.querySelector(":scope > .mm-label")),
+      detail: textOf(node.querySelector(":scope > .mm-detail")),
+      children: [...node.querySelectorAll(":scope > .mm-leaves > li")].map((li) => ({
+        id: li.dataset.id,
+        tone: li.dataset.tone || "",
+        kicker: "",
+        label: textOf(li.querySelector(":scope > .mm-label")),
+        detail: textOf(li.querySelector(":scope > .mm-detail")),
+        children: [],
+      })),
+    };
+  }
+
+  function indexTree(node, parent, kind) {
+    node.parent = parent;
+    node.kind = kind;
+    node.tone = node.tone || (parent && parent.tone) || "root";
+    byId[node.id] = node;
+    const childKind = kind === "root" ? "branch" : "leaf";
+    node.children.forEach((child) => indexTree(child, node, childKind));
+  }
+
+  function toneOf(node) {
+    return TONES[node.tone] || TONES.root;
+  }
+
+  function typeSpec(kind, isStack) {
+    const spec = {
+      root: {
+        padX: 34, padY: 18, size: 26, weight: 700, lh: 32, bar: 3, barGap: 10,
+        family: '"Space Grotesk", "Noto Sans SC", sans-serif',
+      },
+      branch: {
+        padX: 16, padY: 11, size: 15, weight: 700, lh: 21,
+        family: '"DM Sans", "Noto Sans SC", sans-serif',
+        kickerSize: 11, kickerLh: 14, kickerGap: 4, kickerWeight: 700,
+        kickerFamily: '"Space Grotesk", "DM Sans", "Noto Sans SC", sans-serif',
+      },
+      leaf: {
+        padX: 12, padY: 8, size: 14, weight: 500, lh: 19, dot: 6, dotGap: 8,
+        family: '"DM Sans", "Noto Sans SC", sans-serif',
+      },
+    }[kind];
+    if (isStack && kind === "root") {
+      spec.size = 20;
+      spec.lh = 26;
+      spec.padX = 22;
+      spec.padY = 14;
+    }
+    if (isStack && kind === "branch") {
+      spec.size = 17;
+      spec.lh = 23;
+      spec.padX = 6;
+      spec.padY = 2;
+    }
+    if (isStack && kind === "leaf") {
+      spec.size = 15;
+      spec.lh = 21;
+      spec.padY = 11;
+      spec.padX = 10;
+    }
+    return spec;
+  }
+
+  function fontCss(weight, size, family) {
+    return weight + " " + size + "px " + family;
+  }
+
+  function tokenize(text) {
+    const out = [];
+    let buf = "";
+    const flush = () => {
+      if (buf) out.push(buf);
+      buf = "";
+    };
+    for (const ch of text) {
+      if (/[A-Za-z0-9]/.test(ch)) buf += ch;
+      else {
+        flush();
+        out.push(ch);
+      }
+    }
+    flush();
+    return out;
+  }
+
+  function wrapText(text, maxW, font) {
+    measureCtx.font = font;
+    const width = (value) => measureCtx.measureText(value).width;
+    const sticky = /^[）)」』】，。、；：,.!！？?]$/;
+    const punct = /[，。；、：／·]$/;
+    const tokens = tokenize(text);
+    const lines = [];
+    let idx = 0;
+    while (idx < tokens.length) {
+      let end = idx;
+      let line = "";
+      while (end < tokens.length) {
+        const token = tokens[end];
+        if (token === " " && !line) {
+          end += 1;
+          idx = end;
+          continue;
+        }
+        const next = line + token;
+        const over = width(next) > maxW + (sticky.test(token) ? 14 : 0);
+        if (line && over) break;
+        if (!line && width(token) > maxW) {
+          let part = "";
+          for (const ch of token) {
+            if (part && width(part + ch) > maxW) break;
+            part += ch;
+          }
+          line = part || token.slice(0, 1);
+          tokens.splice(end, 1, line, token.slice(line.length));
+          end += 1;
+          break;
+        }
+        line = next;
+        end += 1;
+      }
+      if (end < tokens.length && line) {
+        let cut = -1;
+        let acc = "";
+        for (let k = idx; k < end; k++) {
+          acc += tokens[k];
+          if (punct.test(tokens[k]) && width(acc) >= maxW * 0.46) cut = k;
+        }
+        if (cut >= idx && cut < end - 1) end = cut + 1;
+        else if (end > idx + 1) {
+          const lastTok = tokens[end - 1];
+          const nextTok = tokens[end];
+          const cjk = /^[\u3400-\u9FFF]$/;
+          if (cjk.test(lastTok) && cjk.test(nextTok)) {
+            const trimmed = tokens.slice(idx, end - 1).join("");
+            if (width(trimmed) >= maxW * 0.55) end -= 1;
+          }
+        }
+      }
+      const built = tokens.slice(idx, end).join("");
+      if (built) lines.push(built);
+      if (end === idx) end += 1;
+      idx = end;
+    }
+    if (!lines.length) lines.push("");
+    const tail = lines.length >= 2 ? [...lines[lines.length - 1]].length : 99;
+    const head = lines.length >= 2 ? [...lines[lines.length - 2]].length : 0;
+    if (lines.length >= 2 && tail <= 2 && head >= tail * 3) {
+      const parts = tokenize(lines[lines.length - 2] + lines[lines.length - 1]);
+      let best = null;
+      let acc = "";
+      for (let i = 0; i < parts.length - 1; i++) {
+        acc += parts[i];
+        const rest = parts.slice(i + 1).join("");
+        if ([...rest].length < 2 || [...acc].length < 2) continue;
+        if (width(acc) > maxW + 8 || width(rest) > maxW + 8) continue;
+        const score = Math.abs([...acc].length - [...rest].length);
+        if (!best || score < best.score) best = { a: acc, rest, score };
+      }
+      if (best) {
+        lines[lines.length - 2] = best.a;
+        lines[lines.length - 1] = best.rest;
+      }
+    }
+    return lines;
+  }
+
+  function sizeNode(node, opts) {
+    const spec = typeSpec(opts.kind, opts.stacked);
+    const lines = [];
+    if (node.kicker && opts.kind === "branch") {
+      const kFont = fontCss(spec.kickerWeight, spec.kickerSize, spec.kickerFamily);
+      wrapText(node.kicker, opts.textMax, kFont).forEach((text) => {
+        lines.push({
+          text, font: kFont, lh: spec.kickerLh, size: spec.kickerSize,
+          weight: spec.kickerWeight, family: spec.kickerFamily, role: "kicker",
+        });
+      });
+    }
+    const lFont = fontCss(spec.weight, spec.size, spec.family);
+    wrapText(node.label, opts.textMax, lFont).forEach((text, index) => {
+      lines.push({
+        text, font: lFont, lh: spec.lh, size: spec.size, weight: spec.weight,
+        family: spec.family, role: "label",
+        gapBefore: node.kicker && opts.kind === "branch" && index === 0 ? spec.kickerGap : 0,
+      });
+    });
+    node.lines = lines;
+    node.spec = spec;
+    node.kind = opts.kind;
+    let textW = 0;
+    lines.forEach((line) => {
+      measureCtx.font = line.font;
+      textW = Math.max(textW, Math.ceil(measureCtx.measureText(line.text).width));
+    });
+    const dotExtra = opts.kind === "leaf" ? spec.dot + spec.dotGap : 0;
+    const natural = textW + spec.padX * 2 + dotExtra + 6;
+    node.w = opts.forceW ? Math.max(opts.forceW, natural) : natural;
+    let h = spec.padY * 2;
+    lines.forEach((line) => { h += line.lh + (line.gapBefore || 0); });
+    if (opts.kind === "root") h += spec.barGap + spec.bar;
+    if (opts.kind === "leaf") h = Math.max(h, opts.stacked ? 46 : 38);
+    node.h = h;
+  }
+
+  function blockMetrics(branch, cols, leafGapY) {
+    const kids = branch.children;
+    const useCols = kids.length > 1 ? cols : 1;
+    const rows = Math.max(1, Math.ceil(kids.length / useCols));
+    const rowHeights = [];
+    for (let r = 0; r < rows; r++) {
+      let rh = 0;
+      for (let c = 0; c < useCols; c++) {
+        const kid = kids[r * useCols + c];
+        if (kid) rh = Math.max(rh, kid.h);
+      }
+      rowHeights.push(rh);
+    }
+    const clusterH = rowHeights.reduce((sum, h) => sum + h, 0) + leafGapY * Math.max(0, rows - 1);
+    return { useCols, rows, rowHeights, clusterH, blockH: Math.max(clusterH, branch.h) };
+  }
+
+  function layoutMap(targetW) {
+    const outer = 36;
+    const branchGap = 36;
+    const leafGapX = 12;
+    const leafGapY = 12;
+    const blockGap = 28;
+    const rootGap = 60;
+    edges = [];
+
+    sizeNode(root, { kind: "root", textMax: 460, stacked: false });
+    const leftBranches = LEFT.map((id) => byId[id]).filter(Boolean);
+    const rightBranches = RIGHT.map((id) => byId[id]).filter(Boolean);
+    [...leftBranches, ...rightBranches].forEach((branch) => {
+      sizeNode(branch, { kind: "branch", textMax: 156, stacked: false });
+    });
+    const leftBranchW = Math.max(...leftBranches.map((b) => b.w));
+    const rightBranchW = Math.max(...rightBranches.map((b) => b.w));
+    leftBranches.forEach((b) => { b.w = leftBranchW; });
+    rightBranches.forEach((b) => { b.w = rightBranchW; });
+
+    const fixed = outer * 2 + leftBranchW + rightBranchW + root.w + branchGap * 2 + rootGap * 2;
+    const rest = targetW - fixed;
+    let rightColW = 230;
+    let leftClusterW = 250;
+    if (rest >= 480) {
+      rightColW = Math.min(360, Math.round(rest * 0.54));
+      leftClusterW = rest - rightColW;
+    } else if (rest > 80) {
+      rightColW = Math.round(rest * 0.58);
+      leftClusterW = rest - rightColW;
+    }
+    const leftColW = Math.floor((leftClusterW - leafGapX) / 2);
+
+    function colsFor(branch) {
+      if (leftColW < 146 || branch.children.length < 4) return 1;
+      const longLabel = branch.children.some((child) => [...child.label].length > 14);
+      return longLabel ? 1 : 2;
+    }
+
+    function prepare(branch, colW, clusterW) {
+      const cols = colsFor(branch);
+      const multi = branch.children.length > 1 && cols > 1;
+      branch.children.forEach((child) => {
+        const cell = multi ? colW : clusterW;
+        const spec = typeSpec("leaf", false);
+        const textMax = Math.max(52, cell - spec.padX * 2 - spec.dot - spec.dotGap - 8);
+        sizeNode(child, { kind: "leaf", textMax, forceW: cell, stacked: false });
+      });
+    }
+    leftBranches.forEach((branch) => prepare(branch, leftColW, leftClusterW));
+    rightBranches.forEach((branch) => {
+      branch.children.forEach((child) => {
+        const spec = typeSpec("leaf", false);
+        const textMax = Math.max(52, rightColW - spec.padX * 2 - spec.dot - spec.dotGap - 8);
+        sizeNode(child, { kind: "leaf", textMax, forceW: rightColW, stacked: false });
+      });
+    });
+
+    function columnHeight(branches, colsOf) {
+      return branches.reduce((sum, branch, index) => {
+        const cols = typeof colsOf === "function" ? colsOf(branch) : colsOf;
+        return sum + blockMetrics(branch, cols, leafGapY).blockH + (index ? blockGap : 0);
+      }, 0);
+    }
+    const leftH = columnHeight(leftBranches, colsFor);
+    const rightH = columnHeight(rightBranches, 1);
+    const innerH = Math.max(leftH, rightH, root.h);
+    const contentW = outer + leftClusterW + branchGap + leftBranchW + rootGap + root.w + rootGap + rightBranchW + branchGap + rightColW + outer;
+    const extra = Math.max(0, targetW - contentW);
+    const add = extra / 2;
+
+    const xClusterL = outer;
+    const xBranchL = xClusterL + leftClusterW + branchGap;
+    root.x = xBranchL + leftBranchW + rootGap + add;
+    root.y = outer + (innerH - root.h) / 2;
+    const xBranchR = root.x + root.w + rootGap + add;
+    const xClusterR = xBranchR + rightBranchW + branchGap;
+
+    placeColumn(leftBranches, "left", outer + (innerH - leftH) / 2, xBranchL, xClusterL, colsFor, leftColW, leftClusterW, leafGapY, blockGap);
+    placeColumn(rightBranches, "right", outer + (innerH - rightH) / 2, xBranchR, xClusterR, 1, rightColW, rightColW, leafGapY, blockGap);
+
+    const rootLeft = { x: root.x, y: root.y + root.h / 2 };
+    const rootRight = { x: root.x + root.w, y: root.y + root.h / 2 };
+    leftBranches.forEach((branch) => connectBranch(branch, "left", rootLeft));
+    rightBranches.forEach((branch) => connectBranch(branch, "right", rootRight));
+
+    return { w: xClusterR + rightColW + outer, h: innerH + outer * 2, stacked: false };
+  }
+
+  function placeColumn(branches, side, top, xBranch, xCluster, cols, colW, clusterW, leafGapY, blockGap) {
+    let y = top;
+    branches.forEach((branch) => {
+      const use = typeof cols === "function" ? cols(branch) : cols;
+      const metrics = blockMetrics(branch, use, leafGapY);
+      const clusterTop = y + (metrics.blockH - metrics.clusterH) / 2;
+      branch.x = xBranch;
+      branch.y = y + (metrics.blockH - branch.h) / 2;
+      let rowY = clusterTop;
+      for (let r = 0; r < metrics.rows; r++) {
+        const rh = metrics.rowHeights[r];
+        const count = Math.min(metrics.useCols, branch.children.length - r * metrics.useCols);
+        const shift = side === "left" ? metrics.useCols - count : 0;
+        for (let c = 0; c < count; c++) {
+          const kid = branch.children[r * metrics.useCols + c];
+          kid.h = rh;
+          kid.w = metrics.useCols > 1 ? colW : clusterW;
+          kid.x = xCluster + (metrics.useCols > 1 ? (c + shift) * (colW + 12) : 0);
+          kid.y = rowY;
+        }
+        rowY += rh + leafGapY;
+      }
+      y += metrics.blockH + blockGap;
+    });
+  }
+
+  function connectBranch(branch, side, rootPt) {
+    const color = toneOf(branch).color;
+    const trunkFrom = side === "left"
+      ? { x: branch.x + branch.w, y: branch.y + branch.h / 2 }
+      : { x: branch.x, y: branch.y + branch.h / 2 };
+    edges.push({
+      kind: "trunk", from: branch, to: root, color,
+      x1: trunkFrom.x, y1: trunkFrom.y, x2: rootPt.x, y2: rootPt.y,
+    });
+    const rows = new Map();
+    branch.children.forEach((child) => {
+      const key = Math.round(child.y);
+      if (!rows.has(key)) rows.set(key, []);
+      rows.get(key).push(child);
+    });
+    const leafAnchor = side === "left"
+      ? { x: branch.x, y: branch.y + branch.h / 2 }
+      : { x: branch.x + branch.w, y: branch.y + branch.h / 2 };
+    rows.forEach((row) => {
+      row.sort((a, b) => a.x - b.x);
+      const inner = side === "left" ? row[row.length - 1] : row[0];
+      const leafPt = side === "left"
+        ? { x: inner.x + inner.w, y: inner.y + inner.h / 2 }
+        : { x: inner.x, y: inner.y + inner.h / 2 };
+      edges.push({
+        kind: "leaf", from: branch, to: inner, color,
+        x1: leafAnchor.x, y1: leafAnchor.y, x2: leafPt.x, y2: leafPt.y,
+      });
+      if (row.length === 2) {
+        const leftN = row[0];
+        const rightN = row[1];
+        edges.push({
+          kind: "sibling", from: leftN, to: rightN, color,
+          x1: leftN.x + leftN.w, y1: leftN.y + leftN.h / 2,
+          x2: rightN.x, y2: rightN.y + rightN.h / 2,
+        });
+      }
+    });
+  }
+
+  function layoutStack(width) {
+    edges = [];
+    const pad = 16;
+    const inner = width - pad * 2;
+    let y = 40;
+    sizeNode(root, { kind: "root", textMax: Math.min(340, inner - 28), stacked: true });
+    root.x = (width - root.w) / 2;
+    root.y = y;
+    y += root.h + 22;
+    let prev = root;
+    STACK.map((id) => byId[id]).filter(Boolean).forEach((branch) => {
+      const cardTop = y;
+      sizeNode(branch, { kind: "branch", textMax: inner - 64, stacked: true });
+      branch.w = inner - 52;
+      branch.x = pad + 30;
+      branch.y = cardTop + 14;
+      y = branch.y + branch.h + 8;
+      branch.children.forEach((child) => {
+        const spec = typeSpec("leaf", true);
+        const cellW = inner - 36;
+        const textMax = Math.max(64, cellW - spec.padX * 2 - spec.dot - spec.dotGap - 8);
+        sizeNode(child, { kind: "leaf", textMax, forceW: cellW, stacked: true });
+        child.x = pad + 18;
+        child.y = y;
+        child.w = cellW;
+        y += child.h + 2;
+      });
+      y += 12;
+      branch.card = { x: pad, y: cardTop, w: inner, h: y - cardTop };
+      const y1 = prev === root ? root.y + root.h + 2 : prev.card.y + prev.card.h;
+      edges.push({
+        kind: "stem", from: prev, to: branch, color: toneOf(branch).color,
+        x1: width / 2, y1, x2: width / 2, y2: cardTop,
+      });
+      prev = branch;
+      y += 18;
+    });
+    return { w: width, h: y + 8, stacked: true };
+  }
+
+  function curve(x1, y1, x2, y2) {
+    const dir = x2 >= x1 ? 1 : -1;
+    const dx = Math.max(20, Math.abs(x2 - x1) * 0.46);
+    return "M " + x1 + " " + y1 + " C " + (x1 + dir * dx) + " " + y1 + ", " + (x2 - dir * dx) + " " + y2 + ", " + x2 + " " + y2;
+  }
+
+  function drawText(group, node) {
+    const spec = node.spec;
+    let blockH = 0;
+    node.lines.forEach((line) => { blockH += line.lh + (line.gapBefore || 0); });
+    const extra = node.kind === "root" ? spec.barGap + spec.bar : 0;
+    let y = node.y + (node.h - extra - blockH) / 2;
+    const textG = el("g", { class: "mm-text" }, group);
+    if (node.kind === "leaf") {
+      el("circle", {
+        cx: node.x + spec.padX + spec.dot / 2,
+        cy: y + node.lines[0].lh / 2,
+        r: spec.dot / 2,
+        fill: toneOf(node).color,
+        "pointer-events": "none",
+      }, textG);
+    }
+    const anchor = node.kind === "leaf" ? "start" : "middle";
+    const x = node.kind === "leaf"
+      ? node.x + spec.padX + spec.dot + spec.dotGap
+      : node.x + node.w / 2;
+    node.lines.forEach((line) => {
+      y += line.gapBefore || 0;
+      const text = el("text", {
+        x, y: y + line.lh / 2,
+        "text-anchor": anchor,
+        "dominant-baseline": "middle",
+        "font-family": line.family,
+        "font-size": line.size,
+        "font-weight": line.weight,
+        fill: line.role === "kicker" ? toneOf(node).color : (node.kind === "root" ? "#f8fafc" : "#e8eef8"),
+      }, textG);
+      text.textContent = line.text;
+      y += line.lh;
+    });
+    if (node.kind === "root") {
+      const barW = Math.min(64, node.w * 0.34);
+      el("rect", {
+        x: node.x + (node.w - barW) / 2,
+        y: node.y + node.h - spec.padY - spec.bar,
+        width: barW, height: spec.bar, rx: 1.5,
+        fill: "url(#mm-stroke)",
+        "pointer-events": "none",
+      }, group);
+    }
+  }
+
+  function drawNode(node, parent) {
+    const color = toneOf(node).color;
+    const group = el("g", {
+      class: "mm-node",
+      role: "button",
+      tabindex: "0",
+      "data-id": node.id,
+      "data-kind": node.kind,
+      "data-tone": node.tone,
+      "aria-pressed": "false",
+      "aria-label": [node.kicker, node.label].filter(Boolean).join("，"),
+    }, parent);
+    group.style.setProperty("--glow", toneOf(node).glow);
+    group.style.setProperty("--node", color);
+    const rx = node.kind === "root" ? 22 : node.kind === "branch" ? 15 : 12;
+    const soft = stacked && node.kind !== "root";
+    el("rect", {
+      class: "mm-shape",
+      x: node.x, y: node.y, width: node.w, height: node.h, rx,
+      fill: soft ? "transparent" : (node.kind === "root" ? "#141c2e" : node.kind === "branch" ? "#172338" : "#141c2c"),
+      stroke: soft ? "transparent" : (node.kind === "root" ? "url(#mm-stroke)" : color),
+      "stroke-width": node.kind === "root" ? 2.7 : node.kind === "branch" ? 1.7 : 1.2,
+      "stroke-opacity": node.kind === "leaf" && !soft ? 0.62 : 1,
+    }, group);
+    if (!soft && node.kind !== "root") {
+      el("rect", {
+        x: node.x + 1.4, y: node.y + 1.4,
+        width: Math.max(0, node.w - 2.8),
+        height: Math.max(0, node.h - 2.8),
+        rx: Math.max(1, rx - 1),
+        fill: color,
+        opacity: node.kind === "branch" ? 0.15 : 0.08,
+        "pointer-events": "none",
+      }, group);
+    }
+    drawText(group, node);
+    group.addEventListener("keydown", onNodeKey);
+    return group;
+  }
+
+  function draw(model, animate) {
+    svg.replaceChildren();
+    svg.classList.toggle("is-stack", model.stacked);
+    svg.classList.toggle("is-animated", !!animate);
+    const defs = el("defs", {}, svg);
+    const stroke = el("linearGradient", { id: "mm-stroke", x1: "0%", y1: "0%", x2: "100%", y2: "100%" }, defs);
+    el("stop", { offset: "0%", "stop-color": "#ff6b6b" }, stroke);
+    el("stop", { offset: "46%", "stop-color": "#ffb347" }, stroke);
+    el("stop", { offset: "100%", "stop-color": "#2dd4bf" }, stroke);
+    const halo = el("radialGradient", { id: "mm-halo", cx: "50%", cy: "50%", r: "50%" }, defs);
+    el("stop", { offset: "0%", "stop-color": "#ff6b6b", "stop-opacity": "0.34" }, halo);
+    el("stop", { offset: "40%", "stop-color": "#ffb347", "stop-opacity": "0.16" }, halo);
+    el("stop", { offset: "100%", "stop-color": "#2dd4bf", "stop-opacity": "0" }, halo);
+
+    const bg = el("g", { class: "mm-bg" }, svg);
+    const haloR = Math.max(root.h * 1.35, 88);
+    el("circle", {
+      class: "mm-halo",
+      cx: root.x + root.w / 2,
+      cy: root.y + root.h / 2,
+      r: haloR,
+      fill: "url(#mm-halo)",
+    }, bg);
+
+    const edgeLayer = el("g", { class: "mm-edges" }, svg);
+    edges.forEach((edge, index) => {
+      if (edge.kind === "trunk") {
+        const grad = el("linearGradient", {
+          id: "mm-edge-" + edge.from.id,
+          gradientUnits: "userSpaceOnUse",
+          x1: edge.x2, y1: edge.y2, x2: edge.x1, y2: edge.y1,
+        }, defs);
+        el("stop", { offset: "0%", "stop-color": "#f4f7fb", "stop-opacity": "0.45" }, grad);
+        el("stop", { offset: "100%", "stop-color": edge.color }, grad);
+      }
+      const d = edge.kind === "trunk" || edge.kind === "leaf"
+        ? curve(edge.x1, edge.y1, edge.x2, edge.y2)
+        : "M " + edge.x1 + " " + edge.y1 + " L " + edge.x2 + " " + edge.y2;
+      const path = el("path", {
+        class: "mm-edge mm-" + edge.kind,
+        d,
+        stroke: edge.kind === "trunk" ? "url(#mm-edge-" + edge.from.id + ")" : edge.color,
+        "stroke-width": edge.kind === "trunk" ? 2.4 : edge.kind === "stem" ? 2 : edge.kind === "sibling" ? 1.35 : 1.65,
+        "stroke-opacity": edge.kind === "sibling" ? 0.45 : edge.kind === "leaf" ? 0.78 : 1,
+        pathLength: "1",
+        "data-from": edge.from.id,
+        "data-to": edge.to.id,
+        "pointer-events": "none",
+      }, edgeLayer);
+      path.style.animationDelay = Math.min(0.4, index * 0.028) + "s";
+    });
+
+    const nodeLayer = el("g", { class: "mm-nodes" }, svg);
+    if (model.stacked) {
+      root.children.forEach((branch) => {
+        if (!branch.card) return;
+        const card = el("g", { class: "mm-card", "data-id": branch.id }, nodeLayer);
+        el("rect", {
+          x: branch.card.x, y: branch.card.y, width: branch.card.w, height: branch.card.h, rx: 18,
+          fill: "#152036",
+          stroke: toneOf(branch).color,
+          "stroke-opacity": "0.4",
+          "stroke-width": "1.3",
+        }, card);
+        el("rect", {
+          x: branch.card.x + 10,
+          y: branch.card.y + 18,
+          width: 4,
+          height: Math.max(16, branch.card.h - 36),
+          rx: 2,
+          fill: toneOf(branch).color,
+          "pointer-events": "none",
+        }, card);
+        branch.children.forEach((child, index) => {
+          if (!index) return;
+          el("line", {
+            x1: child.x + 6, x2: child.x + child.w - 6, y1: child.y, y2: child.y,
+            stroke: "rgba(232,238,248,0.08)",
+            "pointer-events": "none",
+          }, card);
+        });
+      });
+    }
+    drawNode(root, nodeLayer);
+    root.children.forEach((branch) => {
+      drawNode(branch, nodeLayer);
+      branch.children.forEach((child) => drawNode(child, nodeLayer));
+    });
+
+    if (!model.stacked) {
+      const seen = new Set();
+      edges.filter((edge) => edge.kind === "trunk").forEach((edge) => {
+        el("circle", {
+          cx: edge.x1, cy: edge.y1, r: 4.2,
+          fill: edge.color, stroke: "#0c1424", "stroke-width": 2,
+          "pointer-events": "none",
+        }, nodeLayer);
+        const key = Math.round(edge.x2) + ":" + Math.round(edge.y2);
+        if (!seen.has(key)) {
+          seen.add(key);
+          el("circle", {
+            cx: edge.x2, cy: edge.y2, r: 5,
+            fill: "url(#mm-stroke)", stroke: "#0c1424", "stroke-width": 2,
+            "pointer-events": "none",
+          }, nodeLayer);
+        }
+      });
+    }
+  }
+
+  function nodeList() {
+    const list = [root];
+    root.children.forEach((branch) => {
+      list.push(branch);
+      branch.children.forEach((child) => list.push(child));
+    });
+    return list;
+  }
+
+  function countOverlaps() {
+    const list = nodeList();
+    const pairs = [];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i];
+        const b = list[j];
+        const hit = a.x + 2 < b.x + b.w && a.x + a.w > b.x + 2 && a.y + 2 < b.y + b.h && a.y + a.h > b.y + 2;
+        if (hit && pairs.length < 12) pairs.push(a.id + "|" + b.id);
+      }
+    }
+    svg.dataset.overlapPairs = pairs.join(",");
+    return pairs.length;
+  }
+
+  function relatedIds(id) {
+    const set = new Set();
+    let current = byId[id];
+    while (current) {
+      set.add(current.id);
+      current = current.parent;
+    }
+    (function down(node) {
+      set.add(node.id);
+      node.children.forEach(down);
+    })(byId[id]);
+    return set;
+  }
+
+  function applySelection() {
+    const set = selectedId ? relatedIds(selectedId) : null;
+    svg.classList.toggle("is-filtering", !!set);
+    svg.querySelectorAll(".mm-node").forEach((group) => {
+      const id = group.dataset.id;
+      const hot = !!(set && set.has(id));
+      group.classList.toggle("is-on", id === selectedId);
+      group.classList.toggle("is-dim", !!(set && !hot));
+      group.setAttribute("aria-pressed", id === selectedId ? "true" : "false");
+    });
+    svg.querySelectorAll(".mm-card").forEach((card) => {
+      const hot = !!(set && set.has(card.dataset.id));
+      card.classList.toggle("is-dim", !!(set && !hot));
+    });
+    svg.querySelectorAll(".mm-edge").forEach((path) => {
+      const hot = !!(set && set.has(path.dataset.from) && set.has(path.dataset.to));
+      path.classList.toggle("is-hot", hot);
+      path.classList.toggle("is-dim", !!(set && !hot));
+    });
+    if (!selectedId || !byId[selectedId]) {
+      crumbEl.textContent = "近 → 中 → 远";
+      titleEl.textContent = "点开节点，看这一支";
+      bodyEl.textContent = "高亮从中心连到叶子，文字与页面正文一致。";
+      detailEl.dataset.tone = "root";
+      return;
+    }
+    const node = byId[selectedId];
+    const parts = [];
+    let cursor = node;
+    while (cursor) {
+      parts.push(cursor.kicker ? cursor.kicker + " · " + cursor.label : cursor.label);
+      cursor = cursor.parent;
+    }
+    crumbEl.textContent = parts.reverse().join("  /  ");
+    titleEl.textContent = node.kicker ? node.kicker + " · " + node.label : node.label;
+    bodyEl.textContent = node.detail || "";
+    detailEl.dataset.tone = node.tone || "root";
+  }
+
+  function select(id, toggle) {
+    if (toggle && selectedId === id) selectedId = null;
+    else selectedId = id;
+    applySelection();
+  }
+
+  function clearSelection() {
+    selectedId = null;
+    applySelection();
+  }
+
+  function nearest(from, dir) {
+    const cx = from.x + from.w / 2;
+    const cy = from.y + from.h / 2;
+    let best = null;
+    let bestScore = Infinity;
+    nodeList().forEach((node) => {
+      if (node.id === from.id) return;
+      const nx = node.x + node.w / 2;
+      const ny = node.y + node.h / 2;
+      const dx = nx - cx;
+      const dy = ny - cy;
+      if (dir === "left" && dx >= -4) return;
+      if (dir === "right" && dx <= 4) return;
+      if (dir === "up" && dy >= -4) return;
+      if (dir === "down" && dy <= 4) return;
+      const primary = dir === "left" || dir === "right" ? Math.abs(dx) : Math.abs(dy);
+      const secondary = dir === "left" || dir === "right" ? Math.abs(dy) : Math.abs(dx);
+      const score = primary + secondary * 1.8;
+      if (score < bestScore) {
+        bestScore = score;
+        best = node;
+      }
+    });
+    return best;
+  }
+
+  function reveal(node) {
+    if (stacked) return;
+    const left = node.x * scale;
+    const top = node.y * scale;
+    const right = (node.x + node.w) * scale;
+    const bottom = (node.y + node.h) * scale;
+    const pad = 20;
+    if (left < viewport.scrollLeft) viewport.scrollLeft = Math.max(0, left - pad);
+    if (top < viewport.scrollTop) viewport.scrollTop = Math.max(0, top - pad);
+    if (right > viewport.scrollLeft + viewport.clientWidth) {
+      viewport.scrollLeft = right - viewport.clientWidth + pad;
+    }
+    if (bottom > viewport.scrollTop + viewport.clientHeight) {
+      viewport.scrollTop = bottom - viewport.clientHeight + pad;
+    }
+  }
+
+  function onNodeKey(event) {
+    const id = event.currentTarget.dataset.id;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      select(id, true);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      clearSelection();
+      viewport.focus();
+      return;
+    }
+    const dir = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" }[event.key];
+    if (!dir) return;
+    event.preventDefault();
+    const next = nearest(byId[id], dir);
+    if (!next) return;
+    const group = svg.querySelector('.mm-node[data-id="' + CSS.escape(next.id) + '"]');
+    if (group) group.focus({ preventScroll: true });
+    select(next.id, false);
+    reveal(next);
+  }
+
+  function centerOnRoot() {
+    if (stacked || !root) return;
+    const cx = (root.x + root.w / 2) * scale;
+    const cy = (root.y + root.h / 2) * scale;
+    viewport.scrollLeft = Math.max(0, cx - viewport.clientWidth / 2);
+    viewport.scrollTop = Math.max(0, cy - viewport.clientHeight / 2);
+  }
+
+  function applyScale(next, anchorX, anchorY) {
+    const prev = scale || 1;
+    const clamped = Math.max(0.72, Math.min(1.6, next));
+    if (Math.abs(clamped - prev) < 0.001) return;
+    const px = anchorX == null ? viewport.clientWidth / 2 : anchorX;
+    const py = anchorY == null ? viewport.clientHeight / 2 : anchorY;
+    const wx = (viewport.scrollLeft + px) / prev;
+    const wy = (viewport.scrollTop + py) / prev;
+    scale = clamped;
+    svg.setAttribute("width", String(base.w * scale));
+    svg.setAttribute("height", String(base.h * scale));
+    viewport.classList.toggle("is-zoomed", !stacked && scale > 1.02);
+    viewport.scrollLeft = wx * scale - px;
+    viewport.scrollTop = wy * scale - py;
+  }
+
+  function render(options) {
+    const opts = options || {};
+    const target = Math.round(viewport.clientWidth);
+    if (target < 40) return;
+    if (!opts.force && target === lastW && svg.dataset.ready === "1") return;
+    const mode = target < 860 ? "stack" : "map";
+    const preserve = lastMode === mode && base.w > 1 ? {
+      rx: (viewport.scrollLeft + viewport.clientWidth / 2) / (base.w * scale),
+      ry: (viewport.scrollTop + viewport.clientHeight / 2) / (base.h * scale),
+    } : null;
+    lastW = target;
+    const model = mode === "stack" ? layoutStack(target) : layoutMap(target);
+    stacked = model.stacked;
+    base = { w: model.w, h: model.h };
+    scale = 1;
+    draw(model, !!opts.animate && lastMode !== mode);
+    if (!lastMode) svg.classList.add("is-animated");
+    svg.setAttribute("viewBox", "0 0 " + base.w + " " + base.h);
+    svg.setAttribute("width", String(base.w));
+    svg.setAttribute("height", String(base.h));
+    viewport.classList.toggle("is-stack", stacked);
+    viewport.classList.toggle("is-map", !stacked);
+    viewport.classList.remove("is-zoomed");
+    if (hint) {
+      hint.textContent = stacked
+        ? "上下滑动阅读全图 · 点一行看原文"
+        : "点节点看原文 · 放大后可拖拽平移";
+    }
+    svg.dataset.mode = mode;
+    svg.dataset.width = String(Math.round(base.w));
+    svg.dataset.height = String(Math.round(base.h));
+    svg.dataset.overlaps = String(countOverlaps());
+    svg.dataset.ready = "1";
+    applySelection();
+    if (preserve && !stacked) {
+      viewport.scrollLeft = preserve.rx * base.w - viewport.clientWidth / 2;
+      viewport.scrollTop = preserve.ry * base.h - viewport.clientHeight / 2;
+    } else if (!stacked && lastMode !== mode) {
+      centerOnRoot();
+    } else if (!stacked && !lastMode) {
+      centerOnRoot();
+    }
+    lastMode = mode;
+  }
+
+  let drag = null;
+  viewport.addEventListener("pointerdown", (event) => {
+    if (event.button != null && event.button !== 0) return;
+    const hit = event.target && event.target.closest ? event.target.closest(".mm-node") : null;
+    drag = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      sx: viewport.scrollLeft,
+      sy: viewport.scrollTop,
+      moved: false,
+      pointer: event.pointerType,
+      nodeId: hit ? hit.dataset.id : "",
+    };
+    if (event.pointerType === "mouse") viewport.setPointerCapture(event.pointerId);
+  });
+  viewport.addEventListener("pointermove", (event) => {
+    if (!drag || drag.id !== event.pointerId || stacked) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) > 5) {
+      drag.moved = true;
+      viewport.classList.add("is-panning");
+    }
+    if (drag.moved && drag.pointer === "mouse") {
+      viewport.scrollLeft = drag.sx - dx;
+      viewport.scrollTop = drag.sy - dy;
+    }
+  });
+  function endDrag(event) {
+    if (!drag || (event && drag.id !== event.pointerId)) return;
+    const moved = drag.moved;
+    const nodeId = drag.nodeId;
+    drag = null;
+    viewport.classList.remove("is-panning");
+    if (moved) return;
+    if (nodeId) select(nodeId, true);
+    else clearSelection();
+  }
+  viewport.addEventListener("pointerup", endDrag);
+  viewport.addEventListener("pointercancel", () => {
+    drag = null;
+    viewport.classList.remove("is-panning");
+  });
+
+  viewport.addEventListener("wheel", (event) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+    const delta = event.deltaY > 0 ? -0.08 : 0.08;
+    applyScale(scale + delta, event.clientX - rect.left, event.clientY - rect.top);
+  }, { passive: false });
+
+  let pinch = null;
+  viewport.addEventListener("touchstart", (event) => {
+    if (event.touches.length === 2) {
+      const a = event.touches[0];
+      const b = event.touches[1];
+      pinch = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), scale };
+    }
+  }, { passive: true });
+  viewport.addEventListener("touchmove", (event) => {
+    if (!pinch || event.touches.length < 2) return;
+    event.preventDefault();
+    const a = event.touches[0];
+    const b = event.touches[1];
+    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    applyScale(pinch.scale * (dist / pinch.dist));
+  }, { passive: false });
+  viewport.addEventListener("touchend", () => { pinch = null; });
+
+  viewport.addEventListener("keydown", (event) => {
+    if (event.target !== viewport) return;
+    const step = 56;
+    if (event.key === "ArrowDown") { viewport.scrollTop += step; event.preventDefault(); }
+    else if (event.key === "ArrowUp") { viewport.scrollTop -= step; event.preventDefault(); }
+    else if (event.key === "ArrowRight") { viewport.scrollLeft += step; event.preventDefault(); }
+    else if (event.key === "ArrowLeft") { viewport.scrollLeft -= step; event.preventDefault(); }
+    else if (event.key === "+" || event.key === "=") { applyScale(scale + 0.12); event.preventDefault(); }
+    else if (event.key === "-" || event.key === "_") { applyScale(scale - 0.12); event.preventDefault(); }
+    else if (event.key === "0") {
+      applyScale(Math.min(1, (viewport.clientWidth - 4) / base.w));
+      centerOnRoot();
+      event.preventDefault();
+    }
+  });
+
+  document.getElementById("mindmap-zoom-in").addEventListener("click", () => applyScale(scale + 0.12));
+  document.getElementById("mindmap-zoom-out").addEventListener("click", () => applyScale(scale - 0.12));
+  document.getElementById("mindmap-zoom-fit").addEventListener("click", () => {
+    applyScale(Math.min(1, (viewport.clientWidth - 4) / base.w));
+    requestAnimationFrame(centerOnRoot);
+  });
+
+  let resizeTimer = 0;
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => {
+      const w = Math.round(viewport.clientWidth);
+      if (w === lastW) return;
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => render({ force: true, animate: false }), 90);
+    }).observe(viewport);
+  } else {
+    window.addEventListener("resize", () => render({ force: true, animate: false }));
+  }
+
+  function boot() {
+    const sourceRoot = source.querySelector(":scope > .mm-branch");
+    root = readBranch(sourceRoot);
+    root.children = [...source.querySelectorAll(":scope > .mm-kids > .mm-branch")].map(readBranch);
+    indexTree(root, null, "root");
+    const start = () => {
+      document.documentElement.classList.add("js");
+      requestAnimationFrame(() => {
+        render({ force: true, animate: true });
+        requestAnimationFrame(centerOnRoot);
+      });
+    };
+    if (document.fonts && document.fonts.ready) {
+      const fonts = [
+        '700 22px "Noto Sans SC"',
+        '700 15px "Noto Sans SC"',
+        '500 14px "Noto Sans SC"',
+        '700 17px "Noto Sans SC"',
+        '500 15px "Noto Sans SC"',
+      ].map((spec) => document.fonts.load(spec).catch(() => {}));
+      Promise.all([document.fonts.ready, ...fonts]).then(start).catch(start);
+    } else start();
+  }
+
+  try {
+    boot();
+  } catch (err) {
+    console.error(err);
+    document.documentElement.classList.remove("js");
+  }
+})();
