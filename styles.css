@@ -62,6 +62,21 @@ body {
 }
 .skip-link:focus { left: 0.5rem; top: 0.5rem; }
 
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.noscript-note {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 179, 71, 0.12);
+  border-bottom: 1px solid rgba(255, 179, 71, 0.35);
+  color: var(--amber);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
 .wrap {
   width: min(100% - 2rem, var(--max));
   margin-inline: auto;
@@ -779,7 +794,20 @@ body {
   .today-layout { grid-template-columns: 1fr; }
   .week-grid { grid-template-columns: repeat(2, 1fr); }
   .why-grid { grid-template-columns: 1fr; }
-  .nav { display: none; }
+  .topbar-inner {
+    flex-wrap: wrap;
+    padding-block: 0.4rem;
+  }
+  .nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav a { white-space: nowrap; }
 }
 @media (max-width: 520px) {
   .week-grid { grid-template-columns: 1fr; }
