@@ -38,10 +38,10 @@
     4: {
       label: "周四",
       classes: "Marketing · Português · História",
-      context: "课间缝插短跟进；护住语言与日记。",
-      deep: "课间／傍晚前 实习短跟进（30–60 分）",
+      context: "上午外贸深工，下午连上三节；晚间健身→看书／语言→日记。",
+      deep: "9:00–12:30 外贸深工（公司研究／简历／投递）",
       deepLong: false,
-      internshipHint: "课满的一天：短跟进即可，积小胜。",
+      internshipHint: "上午专攻目标公司／求职信／投递，下午课表不挤。",
     },
     5: {
       label: "周五",
@@ -157,9 +157,6 @@
       if (meta.deepLong) {
         blockClass = "block long";
         blockText = "外贸长块护栏";
-      } else if (d === 4) {
-        blockClass = "block light";
-        blockText = "短跟进";
       } else {
         blockText = "外贸深工";
       }
