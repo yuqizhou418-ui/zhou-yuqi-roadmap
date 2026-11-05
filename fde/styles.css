@@ -634,6 +634,7 @@ h1, h2, .offer {
 .case h3 {
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--line);
+  text-wrap: balance;
 }
 .scene p { margin: 0; color: var(--ivory-dim); }
 .scene .micro { margin-top: auto; padding-top: 0.95rem; font-size: 0.8rem; color: var(--muted); }
@@ -696,6 +697,35 @@ h1, h2, .offer {
   color: var(--gold-2);
   background: transparent;
   line-height: 1.6;
+}
+.case-source {
+  margin: 0.75rem 0 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.case-source a {
+  color: var(--gold-2);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(212, 188, 142, 0.45);
+}
+.case-source a:hover { color: #fff; }
+.outcome-fact {
+  margin-top: 0.35rem;
+  border: 1px solid rgba(212, 188, 142, 0.4);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  color: var(--ivory);
+  line-height: 1.65;
+}
+.outcome-fact strong {
+  color: var(--gold-2);
+  font-weight: 700;
 }
 .case-note { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--muted); }
 
