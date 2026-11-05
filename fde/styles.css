@@ -514,7 +514,7 @@ h1, h2, .offer {
   gap: 0.9rem;
 }
 .triad .beat:last-child,
-.case .beat:last-child { margin-top: auto; padding-top: 0.35rem; }
+.case .beat:last-child { margin-top: 0; padding-top: 0; }
 .beat dt {
   font-size: 0.72rem;
   font-weight: 700;
@@ -726,6 +726,26 @@ h1, h2, .offer {
 .outcome-fact strong {
   color: var(--gold-2);
   font-weight: 700;
+}
+.case-bridge {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(212, 188, 142, 0.35);
+}
+.case-bridge p {
+  margin: 0;
+  color: var(--ivory-dim);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+.case-bridge p + p { margin-top: 0.65rem; }
+.case-bridge span {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--gold-2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
 .case-note { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--muted); }
 
