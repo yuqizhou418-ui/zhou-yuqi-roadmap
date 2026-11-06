@@ -605,6 +605,7 @@ function focusOf(clean) {
     return "";
   }
 
+  /* Reserved for a later cloud pass. This version never calls it. */
   function fromRemote(raw, goal) {
     const ctx = analyze(goal);
     if (!ctx.goal) return null;

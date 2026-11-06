@@ -82,7 +82,7 @@
       <form class="goal-edit" id="edit-form">
         <label for="edit-goal">任务或理想</label>
         <div class="goal-edit-row">
-          <input id="edit-goal" type="text" maxlength="400" autocomplete="off" />
+          <textarea id="edit-goal" rows="1" maxlength="400" autocomplete="off"></textarea>
           <button type="submit" class="split-btn">重新拆解</button>
         </div>
         <p class="essence" id="essence"></p>
@@ -148,7 +148,7 @@
       <p>原点把一件目标拆回可以站稳的事实。</p>
       <p>先写下完成时，外界能指认的状态。再把习惯、身份和别人的时间表从计划里拿开。剩下四类积木：技能、资产、约束、反馈环。</p>
       <p>围棋里，大局观看整盘的方向与厚薄，对应这里的长期，大约三个月到三年的棋形。攻杀意识看已经接触的局部，对应七到九十天里分得出胜负的手。每日行动是落子，每手十五到九十分钟，可以勾选，可以累积。</p>
-      <p>推演默认在这台浏览器里完成，可以离线。右上角「接口」可以填写 OpenAI 兼容的地址、密钥和模型。密钥只写在 localStorage。云端没有返回可用结果时，仍用本机引擎。</p>
+      <p>这一版的推演在这台浏览器里完成，可以离线。右上角「接口」只是预留：可以记下地址、密钥和模型，拆解不会读取，也不会发出请求。</p>
       <p>勾选和近期目标也只留在本机。</p>
     </div>
   </div>
@@ -156,9 +156,9 @@
   <div class="drawer" id="settings-drawer" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="drawer-panel">
       <button type="button" class="drawer-close" data-close>关闭</button>
-      <p class="kicker">可选</p>
+      <p class="kicker">预留</p>
       <h2 id="settings-title">接口</h2>
-      <p>留空则始终使用本机引擎。密钥只存在这台浏览器，不会写入仓库。</p>
+      <p>这一版拆解始终使用本机引擎。这里的地址、密钥和模型只写在这台浏览器里，供以后接通时使用，现在不会被读取，也不会发出请求。</p>
       <label class="field">
         <span>Base URL</span>
         <input id="llm-base" type="url" inputmode="url" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" />
@@ -171,7 +171,7 @@
         <span>Model</span>
         <input id="llm-model" type="text" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false" />
       </label>
-      <p class="fine">浏览器会直接请求这个地址，接口需要允许网页跨域。失败时自动回到本机引擎。</p>
+      <p class="fine">保存不会联网。密钥不会进入仓库。</p>
       <p class="form-error" id="settings-msg" role="status"></p>
       <div class="drawer-actions">
         <button type="button" class="split-btn" id="settings-save">保存</button>

@@ -1,4 +1,4 @@
-/* 原点 · 页面、推演、声音与可选云端。 */
+/* 原点 · 页面、推演与声音。拆解只用本机引擎。接口抽屉只保存，不发请求。 */
 (function () {
   "use strict";
 
@@ -7,24 +7,15 @@
   const CHECK_KEY = "yuandian-checks-v1";
   const LLM_KEY = "yuandian-llm-v1";
   const SAMPLE = "一年内成为能独立交付的产品设计师，并获得一份匹配的全职工作";
-  const ROW = 58;
-  const COL = 236;
-  const PAD = 36;
+  const ROW = 64;
+  const COL = 220;
+  const PAD = 40;
   const KIND = { skill: "技能", asset: "资产", constraint: "约束", loop: "反馈" };
-
-  const SYSTEM = [
-    "你是「原点」。用第一性原理与围棋的大局／攻杀，把用户的目标拆成可执行的计划。用中文。只输出一个 JSON 对象，不要 Markdown。",
-    "原则：先写可观察的完成状态。剥去习惯、身份和别人的时间表。原子只留 skill 技能、asset 资产、constraint 约束、loop 反馈环。长期是 3–36 个月的棋形。短期是 7–90 天内分得出胜负的结果。每日是 15–90 分钟、今天就能勾选的动作。用用户自己的词。尊重用户写下的期限。",
-    "JSON 形状：",
-    '{"essence":"一句话","assumptions":["假设"],"truths":[{"label":"四到十二字","text":"一句"}],"atoms":[{"kind":"skill","label":"四到十二字","detail":"一句"}],"longTerm":[{"horizon":"3–6 月","title":"四到十二字","why":"一句","moves":["动作","动作"]}],"shortTerm":[{"horizon":"7 天","title":"四到十二字","why":"一句","moves":["动作"]}],"daily":[{"title":"动作","minutes":30,"detail":"怎样算做完"}]}',
-    "数量：assumptions 3 到 4，truths 3，atoms 4，longTerm 3，shortTerm 3，daily 5。minutes 为 15 到 90 的整数。",
-  ].join("\n");
 
   const $ = function (id) { return document.getElementById(id); };
 
   const state = {
     seq: 0,
-    ctl: null,
     plan: null,
     done: {},
     open: new Set(["root"]),
@@ -104,11 +95,6 @@
     };
   }
 
-  function hasLlm() {
-    const cfg = loadLlm();
-    return Boolean(cfg.key.trim() && cfg.base.trim());
-  }
-
   function isHttp(value) {
     try {
       const url = new URL(value);
@@ -116,58 +102,6 @@
     } catch (err) {
       return false;
     }
-  }
-
-  function completionsUrl(base) {
-    const trimmed = base.trim().replace(/\/$/, "");
-    if (/\/chat\/completions$/i.test(trimmed)) return trimmed;
-    return trimmed + "/chat/completions";
-  }
-
-  function extractJson(text) {
-    const start = String(text || "").indexOf("{");
-    const end = String(text || "").lastIndexOf("}");
-    if (start < 0 || end <= start) throw new Error("json");
-    return JSON.parse(text.slice(start, end + 1));
-  }
-
-  function remotePlan(goal, signal) {
-    const cfg = loadLlm();
-    return fetch(completionsUrl(cfg.base), {
-      method: "POST",
-      signal: signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + cfg.key,
-      },
-      body: JSON.stringify({
-        model: cfg.model.trim() || "gpt-4o-mini",
-        temperature: 0.4,
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: goal },
-        ],
-      }),
-    }).then(function (res) {
-      if (!res.ok) throw new Error("http");
-      return res.json();
-    }).then(function (data) {
-      const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-      return engine.fromRemote(extractJson(text || ""), goal);
-    });
-  }
-
-  function withTimeout(promise, ms) {
-    return new Promise(function (resolve, reject) {
-      const timer = window.setTimeout(function () { reject(new Error("timeout")); }, ms);
-      promise.then(function (value) {
-        window.clearTimeout(timer);
-        resolve(value);
-      }, function (err) {
-        window.clearTimeout(timer);
-        reject(err);
-      });
-    });
   }
 
   function setMode(mode) {
@@ -178,16 +112,15 @@
     if (mode === "home") document.title = "原点";
     if (mode === "board") {
       window.requestAnimationFrame(function () {
-        if (!state.framed) frameRoot();
+        const edit = $("edit-goal");
+        if (edit && edit.value) autosize(edit);
+        frameRoot();
       });
     }
   }
 
   function statusText(plan) {
-    const tail = " · " + (plan.domainLabel || "");
-    if (plan.notice) return plan.notice + tail;
-    if (plan.source === "remote") return "云端推演" + tail;
-    return "本机原点" + tail;
+    return "本机原点 · " + (plan.domainLabel || "通用");
   }
 
   function submitForm(form) {
@@ -264,12 +197,12 @@
         ? [["essence", "澄清本质", 0], ["atoms", "找到原子", 520]]
         : [
             ["essence", "澄清本质", 0],
-            ["strip", "剥去假设", 720],
-            ["atoms", "找到原子", 1500],
-            ["split", "分出大局与攻杀", 2300],
-            ["daily", "排入每日", 3100],
+            ["strip", "剥去假设", 900],
+            ["atoms", "找到原子", 1750],
+            ["split", "分出大局与攻杀", 2600],
+            ["daily", "排入每日", 3300],
           ];
-      const doneAt = short ? 1100 : 3900;
+      const doneAt = short ? 1100 : 4000;
       const timers = [];
       let settled = false;
       const finish = function () {
@@ -297,7 +230,6 @@
 
   function goHome() {
     state.seq += 1;
-    if (state.ctl) state.ctl.abort();
     if (typeof ritualCancel === "function") ritualCancel();
     setMode("home");
     renderRecent();
@@ -305,69 +237,36 @@
 
   function present(goal) {
     const seq = ++state.seq;
-    if (state.ctl) state.ctl.abort();
-    const ctl = new AbortController();
-    state.ctl = ctl;
     const local = engine.decompose(goal);
     if (!local) return;
-    let remoteResult = null;
-    let remoteFailed = false;
-    const started = performance.now();
-    const remotePromise = hasLlm()
-      ? remotePlan(goal, ctl.signal).then(function (plan) {
-          remoteResult = plan;
-        }).catch(function (err) {
-          if (err && err.name === "AbortError") return;
-          remoteFailed = true;
-        })
-      : null;
-
     playRitual(local, false).then(function () {
       if (seq !== state.seq) return;
-      if (remoteResult) {
-        showPlan(remoteResult, "", true);
-        return;
-      }
-      const waiting = Boolean(remotePromise) && !remoteFailed;
-      showPlan(local, remoteFailed ? "接口未通，已改用本机原点" : (waiting ? "本机先落子，云端仍在推演" : ""), true);
-      if (!waiting) return;
-      const remain = Math.max(1200, 14000 - (performance.now() - started));
-      withTimeout(remotePromise, remain).then(function () {
-        if (seq !== state.seq) return;
-        if (remoteResult) showPlan(remoteResult, "", false);
-        else $("status").textContent = "接口未通，已改用本机原点 · " + local.domainLabel;
-      }).catch(function () {
-        ctl.abort();
-        if (seq !== state.seq) return;
-        $("status").textContent = "接口未通，已改用本机原点 · " + local.domainLabel;
-      });
+      showPlan(local, true);
     });
   }
 
   function openStored(entry) {
     const plan = entry.plan && entry.plan.v === 1 ? entry.plan : engine.decompose(entry.goal);
     const seq = ++state.seq;
-    if (state.ctl) state.ctl.abort();
     playRitual(plan, true).then(function () {
       if (seq !== state.seq) return;
-      showPlan(plan, "", true);
+      showPlan(plan, true);
     });
   }
 
-function showPlan(plan, notice, moveFocus) {
-  plan.notice = notice || "";
-  remember(plan);
-  state.plan = plan;
-  state.open = new Set(["root"]);
-  state.selected = "root";
-state.framed = false;
+  function showPlan(plan, moveFocus) {
+    remember(plan);
+    state.plan = plan;
+    state.open = new Set(["root"]);
+    state.selected = "root";
+    state.framed = false;
     state.userMoved = false;
     state.zoom = 1;
-  renderBoard(plan);
-  setMode("board");
-  document.title = "原点 · " + shortText(plan.goal, 18);
-  if (moveFocus) $("board-label").focus();
-}
+    renderBoard(plan);
+    setMode("board");
+    document.title = "原点 · " + shortText(plan.goal, 18);
+    if (moveFocus) $("board-label").focus();
+  }
 
   function renderMilestones(list, items) {
     list.replaceChildren();
@@ -455,7 +354,7 @@ state.framed = false;
 
   function place(node, depth, top) {
     const height = node.units * ROW;
-    node.x = PAD + depth * COL;
+    node.x = PAD + depth * (state.col || COL);
     node.y = top + height / 2;
     node.depth = depth + 1;
     if (state.open.has(node.id) && node.children && node.children.length) {
@@ -479,11 +378,15 @@ state.framed = false;
   function showNote(node) {
     const box = $("map-note");
     box.replaceChildren();
-    if (!node) return;
     const title = document.createElement("strong");
-    title.textContent = node.title || node.label;
     const body = document.createElement("span");
-    body.textContent = node.note || "";
+    if (!node || node.id === "root") {
+      title.textContent = "点一枚棋子";
+      body.textContent = "展开本质、原子、大局、攻杀或每日。";
+    } else {
+      title.textContent = node.title || node.label;
+      body.textContent = node.note || "";
+    }
     box.append(title, body);
   }
 
@@ -505,7 +408,7 @@ function frameRoot() {
   let maxY = 0;
   nodes.forEach(function (node) {
     const chars = Array.from(node.label || "").length;
-    const labelW = Math.min(210, chars * 16 + 46);
+    const labelW = Math.min(220, chars * 16 + 64);
     minX = Math.min(minX, node.x - 8);
     maxX = Math.max(maxX, node.x + labelW);
     minY = Math.min(minY, node.y - 28);
@@ -513,12 +416,15 @@ function frameRoot() {
   });
   const contentW = Math.max(80, maxX - minX);
   const contentH = Math.max(80, maxY - minY);
-  const availW = Math.max(80, rect.width - 36);
-  const availH = Math.max(80, rect.height - 120);
-  const zoom = Math.min(1, Math.max(0.78, Math.min(availW / contentW, availH / contentH)));
+  const availW = Math.max(80, rect.width - 48);
+  const topReserve = 78;
+  const bottomReserve = 52;
+  const availH = Math.max(80, rect.height - topReserve - bottomReserve);
+  const minZoom = rect.width < 720 ? 0.58 : 0.8;
+  const zoom = Math.min(1, Math.max(minZoom, Math.min(availW / contentW, availH / contentH)));
   state.zoom = zoom;
   state.panX = (rect.width - contentW * zoom) / 2 - minX * zoom;
-  state.panY = (rect.height - 72 - contentH * zoom) / 2 - minY * zoom;
+  state.panY = topReserve + (availH - contentH * zoom) / 2 - minY * zoom;
   state.framed = true;
   state.rootY = tree.y;
   applyTransform();
@@ -541,6 +447,8 @@ function frameRoot() {
     if (!plan) return;
     const tree = plan.tree;
     const prevY = state.rootY;
+    const widthNow = $("map-viewport").getBoundingClientRect().width;
+    state.col = widthNow && widthNow < 720 ? 156 : COL;
     measure(tree);
     place(tree, 0, PAD);
     if (state.framed && prevY) state.panY -= (tree.y - prevY) * state.zoom;
@@ -630,6 +538,7 @@ function frameRoot() {
 
   function renderBoard(plan) {
     $("edit-goal").value = plan.goal;
+    autosize($("edit-goal"));
     $("essence").textContent = plan.essence;
     $("status").textContent = statusText(plan);
     $("board-note").textContent = plan.boardNote || "";
@@ -800,6 +709,13 @@ function bindAudio() {
       event.preventDefault();
       goHome();
     });
+    $("edit-goal").addEventListener("input", function () { autosize($("edit-goal")); });
+    $("edit-goal").addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        submitForm($("edit-form"));
+      }
+    });
     $("edit-form").addEventListener("submit", function (event) {
       event.preventDefault();
       const value = $("edit-goal").value.trim();
@@ -843,23 +759,19 @@ function bindAudio() {
       const key = $("llm-key").value;
       const model = $("llm-model").value.trim();
       const msg = $("settings-msg");
-      if ((key.trim() || base) && base && !isHttp(base)) {
+      if (base && !isHttp(base)) {
         msg.textContent = "地址需要以 http:// 或 https:// 开头。";
         return;
       }
-      if (key.trim() && !base) {
-        msg.textContent = "填写密钥时，需要一个 http 或 https 地址。";
-        return;
-      }
       saveJson(LLM_KEY, { base: base, key: key, model: model });
-      msg.textContent = key.trim() ? "已留在这台浏览器。下次拆开时会先试云端。" : "已保存。未填密钥时使用本机引擎。";
+      msg.textContent = "已留在这台浏览器。这一版拆解仍只用本机引擎。";
     });
     $("settings-clear").addEventListener("click", function () {
       localStorage.removeItem(LLM_KEY);
       $("llm-base").value = "";
       $("llm-key").value = "";
       $("llm-model").value = "";
-      $("settings-msg").textContent = "已清除。之后只使用本机引擎。";
+      $("settings-msg").textContent = "已清除。拆解继续使用本机引擎。";
     });
 
     const viewport = $("map-viewport");
