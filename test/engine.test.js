@@ -48,6 +48,7 @@ test("model json keeps the user's time and drops invented dates", function () {
   assert.equal(/7 天|7天|30 天|90 天|3–6 月/.test(JSON.stringify(plan)), false);
   assert.equal(completionsUrl("https://api.x.ai/v1"), "https://api.x.ai/v1/chat/completions");
   assert.equal(completionsUrl("https://api.openai.com/v1/"), "https://api.openai.com/v1/chat/completions");
+  assert.equal(completionsUrl("https://api.deepseek.com/v1"), "https://api.deepseek.com/v1/chat/completions");
   assert.equal(completionsUrl("https://api.openai.com/v1/chat/completions").includes("?"), false);
   assert.throws(function () { completionsUrl("https://api.openai.com/v1?key=secret"); });
 });

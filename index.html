@@ -113,18 +113,19 @@
       <button type="button" class="drawer-close" data-close>关闭</button>
       <p class="kicker">模型</p>
       <h2 id="settings-title">接口</h2>
-      <p>选 ChatGPT 或 Grok，填入密钥。测通之后，进入盘面会用它生成导图。密钥只留在这台浏览器，不会写入网址。</p>
+      <p>选 ChatGPT、Grok 或 DeepSeek，填入密钥。测通之后，进入盘面会用它生成导图。密钥只留在这台浏览器，不会写入网址。</p>
       <label class="field">
         <span>提供方</span>
         <select id="llm-provider">
           <option value="openai">ChatGPT</option>
           <option value="xai">Grok</option>
+          <option value="deepseek">DeepSeek</option>
         </select>
       </label>
       <label class="field"><span>Base URL</span><input id="llm-base" type="url" autocomplete="off" spellcheck="false" /></label>
       <label class="field"><span>API Key</span><input id="llm-key" type="password" autocomplete="off" spellcheck="false" /></label>
       <label class="field"><span>模型名</span><input id="llm-model" type="text" autocomplete="off" spellcheck="false" /></label>
-      <p class="fine">网页会用标准方式直接请求这个地址，密钥只放在请求头里。若浏览器提示跨域被拦，请改用你自己允许网页访问的网关，或在浏览器侧放行。公开的 OpenAI 与 xAI 地址经常不允许网页直接调用。</p>
+      <p class="fine">网页会用标准方式直接请求这个地址，密钥只放在请求头里。若浏览器提示跨域被拦，请改用你自己允许网页访问的网关，或在浏览器侧放行。公开的 OpenAI、xAI 与 DeepSeek 地址经常不允许网页直接调用。</p>
       <p class="fine" id="settings-msg" role="status"></p>
       <div class="drawer-actions">
         <button type="button" id="settings-save">保存</button>

@@ -379,6 +379,7 @@
   const PRESETS = {
     openai: { label: "ChatGPT", base: "https://api.openai.com/v1", model: "gpt-4o-mini" },
     xai: { label: "Grok", base: "https://api.x.ai/v1", model: "grok-3" },
+    deepseek: { label: "DeepSeek", base: "https://api.deepseek.com/v1", model: "deepseek-chat" },
   };
   let genSeq = 0;
 
@@ -415,7 +416,7 @@
 
   function applyPreset(provider) {
     const preset = PRESETS[provider] || PRESETS.openai;
-    $("llm-provider").value = preset === PRESETS.xai ? "xai" : "openai";
+    $("llm-provider").value = PRESETS[provider] ? provider : "openai";
     $("llm-base").value = preset.base;
     $("llm-model").value = preset.model;
   }
