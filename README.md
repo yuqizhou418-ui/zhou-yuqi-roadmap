@@ -13,7 +13,9 @@
 
 ## 本机与预留接口
 
-右上角「接口」可以填写 Base URL、密钥和模型，只存在本机 `localStorage`。这一版不会读取，也不会发起请求。
+右上角「接口」可选 ChatGPT、Grok 或 DeepSeek。默认地址分别是 `https://api.openai.com/v1`、`https://api.x.ai/v1` 与 `https://api.deepseek.com/v1`（模型 `deepseek-chat`），模型名可以改。密钥、地址、模型和提供方只存在本机 `localStorage`。点「测试连接」会向该地址的 `chat/completions` 发一句极短探测，密钥只放在 `Authorization` 请求头里。测通之后，进入盘面会用该模型生成导图；失败则回到本机并提示。未填密钥时只用本机，不报错。
+
+公开的 OpenAI、xAI 与 DeepSeek 地址常常不允许浏览器跨域。这时请把 Base URL 换成你自己允许网页访问的网关。
 
 | 键 | 内容 |
 | --- | --- |
