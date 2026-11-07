@@ -88,7 +88,7 @@
       const span = document.createElement("span");
       span.textContent = entry.time;
       open.append(strong, span);
-      open.addEventListener("click", function () { enter(entry.plan); });
+      open.addEventListener("click", function () { openBoard(entry.goal, entry.time); });
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "remove";
@@ -124,6 +124,7 @@
     $("edit-goal").value = plan.goal;
     $("edit-time").value = plan.time;
     $("essence").textContent = plan.essence;
+    if (plan.sourceNote) $("source").textContent = plan.sourceNote;
     $("board-note").textContent = plan.boardNote;
     $("attack-note").textContent = plan.attackNote;
     renderMilestones($("long-list"), plan.longTerm);
@@ -367,11 +368,193 @@
   }
 
   function goEntry() {
+    genSeq += 1;
     setMode("entry");
     $("goal").value = "";
     $("time").value = "";
     $("form-error").textContent = "";
     $("goal").focus();
+  }
+
+  const PRESETS = {
+    openai: { label: "ChatGPT", base: "https://api.openai.com/v1", model: "gpt-4o-mini" },
+    xai: { label: "Grok", base: "https://api.x.ai/v1", model: "grok-3" },
+  };
+  let genSeq = 0;
+
+  function keyMark(key) {
+    let h = 2166136261;
+    for (let i = 0; i < key.length; i += 1) {
+      h ^= key.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(36);
+  }
+
+  function readCfg() {
+    const data = loadJson(LLM_KEY, {});
+    const provider = PRESETS[data.provider] ? data.provider : "openai";
+    return {
+      provider: provider,
+      base: String(data.base || ""),
+      key: String(data.key || ""),
+      model: String(data.model || ""),
+      tested: data.tested && typeof data.tested === "object" ? data.tested : null,
+    };
+  }
+
+  function formCfg() {
+    const provider = PRESETS[$("llm-provider").value] ? $("llm-provider").value : "openai";
+    return {
+      provider: provider,
+      base: $("llm-base").value.trim(),
+      key: $("llm-key").value,
+      model: $("llm-model").value.trim(),
+    };
+  }
+
+  function applyPreset(provider) {
+    const preset = PRESETS[provider] || PRESETS.openai;
+    $("llm-provider").value = preset === PRESETS.xai ? "xai" : "openai";
+    $("llm-base").value = preset.base;
+    $("llm-model").value = preset.model;
+  }
+
+  function isTested(cfg) {
+    const tested = cfg.tested;
+    return Boolean(cfg.key && tested && tested.ok &&
+      tested.provider === cfg.provider &&
+      tested.base === cfg.base &&
+      tested.model === cfg.model &&
+      tested.keyMark === keyMark(cfg.key));
+  }
+
+  function writeCfg(cfg, tested) {
+    const stored = {
+      provider: cfg.provider,
+      base: cfg.base,
+      key: cfg.key,
+      model: cfg.model,
+    };
+    if (tested && tested.ok) stored.tested = tested;
+    saveJson(LLM_KEY, stored);
+  }
+
+  function explainNet(err) {
+    if (err && err.name === "AbortError") return "连接超时。";
+    const status = err && err.status;
+    if (status === 401 || status === 403) return "密钥未被接受。";
+    if (status === 404) return "找不到对话接口。请检查 Base URL。";
+    if (status === 429) return "调用次数受限，请稍后再试。";
+    if (!status) return "浏览器没有把请求送出去，多半是跨域被拦。请改用允许网页访问的网关，或在浏览器侧放行。密钥只放在请求头里，不会写进网址。";
+    return "未连通（HTTP " + status + "）。";
+  }
+
+  function chat(cfg, messages, maxTokens, signal) {
+    const url = engine.completionsUrl(cfg.base);
+    return fetch(url, {
+      method: "POST",
+      signal: signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + cfg.key,
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        temperature: 0.3,
+        max_tokens: maxTokens,
+        messages: messages,
+      }),
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        if (!res.ok) {
+          const error = new Error("http");
+          error.status = res.status;
+          if (cfg.key && text.indexOf(cfg.key) !== -1) error.detail = "";
+          return Promise.reject(error);
+        }
+        let data;
+        try { data = JSON.parse(text); } catch (err) { throw new Error("json"); }
+        const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (!content) throw new Error("empty");
+        return content;
+      });
+    });
+  }
+
+  function withTimeout(work, ms) {
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(function () { ctrl.abort(); }, ms);
+    return work(ctrl.signal).then(function (value) {
+      window.clearTimeout(timer);
+      return value;
+    }, function (err) {
+      window.clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  function extractJson(text) {
+    const start = String(text).indexOf("{");
+    const end = String(text).lastIndexOf("}");
+    if (start < 0 || end <= start) throw new Error("json");
+    return JSON.parse(text.slice(start, end + 1));
+  }
+
+  function probe(cfg) {
+    return withTimeout(function (signal) {
+      return chat(cfg, [{ role: "user", content: "只回复一个字：好" }], 16, signal);
+    }, 20000);
+  }
+
+  function askPlan(cfg, goal, time) {
+    const system = [
+      "你是「原点」。用中文把用户的目标拆成思维导图所需的三段：长期大局、短期攻杀、每日行动。",
+      "只输出一个 JSON 对象，不要 Markdown。",
+      "用户写下的时间是唯一期限，不要改成别的天数或月份。horizon 用两到四字的内容标签，不要写数字。",
+      "longTerm 3 条，shortTerm 3 条，daily 5 条。minutes 为 15 到 90 的整数。",
+      "形状：{\"essence\":\"一句话\",\"longTerm\":[{\"horizon\":\"标签\",\"title\":\"标题\",\"why\":\"一句\",\"moves\":[\"动作\"]}],\"shortTerm\":[{\"horizon\":\"标签\",\"title\":\"标题\",\"why\":\"一句\",\"moves\":[\"动作\"]}],\"daily\":[{\"title\":\"动作\",\"minutes\":25,\"detail\":\"怎样算做完\"}]}",
+    ].join("");
+    return withTimeout(function (signal) {
+      return chat(cfg, [
+        { role: "system", content: system },
+        { role: "user", content: "目标：" + goal + "\n时间：" + time },
+      ], 1600, signal);
+    }, 30000).then(function (content) {
+      return engine.hydrate(extractJson(content), goal, time);
+    });
+  }
+
+  function setSource(text) {
+    $("source").textContent = text || "";
+  }
+
+  function openBoard(goal, time) {
+    const local = engine.decompose(goal, time);
+    if (!local) return;
+    const seq = ++genSeq;
+    const cfg = readCfg();
+    local.sourceNote = cfg.key ? "" : "";
+    enter(local);
+    if (!cfg.key) {
+      setSource("");
+      return;
+    }
+    if (!isTested(cfg)) {
+      setSource("密钥已保存。点「测试连接」通过后，再进入就会用模型生成。");
+      return;
+    }
+    const name = PRESETS[cfg.provider].label;
+    setSource("正在用 " + name + " 生成…");
+    askPlan(cfg, goal, time).then(function (plan) {
+      if (seq !== genSeq) return;
+      plan.sourceNote = "由 " + name + " 生成";
+      enter(plan);
+      setSource(plan.sourceNote);
+    }).catch(function () {
+      if (seq !== genSeq) return;
+      setSource("模型没有返回可用结果，已改用本机。");
+    });
   }
 
   function submitEntry(event) {
@@ -381,25 +564,25 @@
     if (!goal) { $("form-error").textContent = "请写下想达成的目标。"; $("goal").focus(); return; }
     if (!time) { $("form-error").textContent = "请写下你给这件事的时间。"; $("time").focus(); return; }
     $("form-error").textContent = "";
-    const plan = engine.decompose(goal, time);
-    if (plan) enter(plan);
+    openBoard(goal, time);
   }
   function submitEdit(event) {
     event.preventDefault();
     const goal = $("edit-goal").value.trim();
     const time = $("edit-time").value.trim();
     if (!goal || !time) return;
-    const plan = engine.decompose(goal, time);
-    if (plan) enter(plan);
+    openBoard(goal, time);
   }
 
   function openDrawer(opener) {
     state.drawerReturn = opener;
-    const cfg = loadJson(LLM_KEY, {});
-    $("llm-base").value = cfg.base || "";
+    const cfg = readCfg();
+    $("llm-provider").value = cfg.provider;
+    if (cfg.base) $("llm-base").value = cfg.base;
+    else applyPreset(cfg.provider);
+    if (cfg.model) $("llm-model").value = cfg.model;
     $("llm-key").value = cfg.key || "";
-    $("llm-model").value = cfg.model || "";
-    $("settings-msg").textContent = "";
+    $("settings-msg").textContent = isTested(cfg) ? "上次测试已连通。进入盘面会用 " + PRESETS[cfg.provider].label + "。" : "";
     $("settings-drawer").hidden = false;
     $("settings-drawer").querySelector("[data-close]").focus();
   }
@@ -488,18 +671,54 @@
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape" && !$("settings-drawer").hidden) closeDrawer();
     });
+    $("llm-provider").addEventListener("change", function () {
+      applyPreset($("llm-provider").value);
+      $("settings-msg").textContent = "已换到预设地址和模型名，仍可手动修改。换过之后需要重新测试连接。";
+    });
+    function collectCfg() {
+      const cfg = formCfg();
+      if (!cfg.base || !isHttp(cfg.base)) {
+        $("settings-msg").textContent = "地址需要以 http:// 或 https:// 开头。";
+        return null;
+      }
+      try { engine.completionsUrl(cfg.base); } catch (err) {
+        $("settings-msg").textContent = "地址不要带参数。密钥不会写进网址。";
+        return null;
+      }
+      const prev = readCfg();
+      const next = Object.assign({}, cfg, { tested: prev.tested });
+      writeCfg(next, isTested(next) ? next.tested : null);
+      return readCfg();
+    }
     $("settings-save").addEventListener("click", function () {
-      const base = $("llm-base").value.trim();
-      if (base && !isHttp(base)) { $("settings-msg").textContent = "地址需要以 http:// 或 https:// 开头。"; return; }
-      saveJson(LLM_KEY, { base: base, key: $("llm-key").value, model: $("llm-model").value.trim() });
-      $("settings-msg").textContent = "已留在这台浏览器。这一版不会用它发请求。";
+      const cfg = collectCfg();
+      if (!cfg) return;
+      $("settings-msg").textContent = cfg.key
+        ? (isTested(cfg) ? "已保存，并且上次测试仍然有效。" : "已保存在这台浏览器。请再点「测试连接」。")
+        : "已保存。未填密钥时，盘面仍只用本机。";
+    });
+    $("settings-test").addEventListener("click", function () {
+      const cfg = collectCfg();
+      if (!cfg) return;
+      if (!cfg.key.trim()) { $("settings-msg").textContent = "请先填写密钥。"; return; }
+      if (!cfg.model) { $("settings-msg").textContent = "请填写模型名。"; return; }
+      const btn = $("settings-test");
+      btn.disabled = true;
+      $("settings-msg").textContent = "正在测试连接…";
+      probe(cfg).then(function () {
+        const mark = { ok: true, provider: cfg.provider, base: cfg.base, model: cfg.model, keyMark: keyMark(cfg.key) };
+        writeCfg(cfg, mark);
+        $("settings-msg").textContent = "已连通。之后进入盘面会用 " + PRESETS[cfg.provider].label + " 生成导图。";
+      }).catch(function (err) {
+        writeCfg(cfg, null);
+        $("settings-msg").textContent = "测试失败。" + explainNet(err);
+      }).then(function () { btn.disabled = false; });
     });
     $("settings-clear").addEventListener("click", function () {
       localStorage.removeItem(LLM_KEY);
-      $("llm-base").value = "";
+      applyPreset("openai");
       $("llm-key").value = "";
-      $("llm-model").value = "";
-      $("settings-msg").textContent = "已清除。";
+      $("settings-msg").textContent = "已清除。盘面继续只用本机。";
     });
     const viewport = $("map-viewport");
     let drag = null;

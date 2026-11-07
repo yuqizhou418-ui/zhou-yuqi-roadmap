@@ -133,6 +133,7 @@ body[data-mode="board"] .board { display: block; }
   margin: 0.55rem 0 0; max-width: 46rem;
   font-family: var(--serif); font-size: 1.02rem; line-height: 1.55;
 }
+.source { margin: 0.25rem 0 0; min-height: 1.3rem; color: var(--gold, var(--muted)); font-size: 0.88rem; }
 
 .stage-grid {
   display: grid;
@@ -232,9 +233,17 @@ body[data-mode="board"] .board { display: block; }
 .kicker { margin: 0 0 0.3rem; letter-spacing: 0.14em; font-size: 0.82rem; }
 .drawer-close { position: absolute; top: 0.7rem; right: 1rem; }
 .field { display: flex; flex-direction: column; gap: 0.2rem; margin: 1rem 0; }
-.field input { background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 0.4rem 0; }
+.field input, .field select {
+  font: inherit; color: inherit; background: transparent;
+  border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 0.4rem 0;
+}
 .fine { min-height: 1.3rem; }
-.drawer-actions { display: flex; align-items: center; gap: 1rem; }
+#settings-msg { color: inherit; }
+.drawer-actions { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+#settings-test {
+  margin-top: 1.4rem; background: transparent; color: inherit;
+  border: 1px solid currentColor; min-height: 44px; padding: 0.5rem 0.85rem;
+}
 body[data-mode="entry"] .drawer-panel { background: #fffcf8; color: #1c1916; }
 
 @media (max-width: 1040px) {

@@ -264,6 +264,97 @@
     };
   }
 
+  function plain(value, max) {
+    return clip(String(value == null ? "" : value).replace(/<[^>]+>/g, ""), max);
+  }
+
+  function asMoves(value) {
+    if (Array.isArray(value)) return value.map(function (item) { return plain(item, 80); }).filter(Boolean).slice(0, 3);
+    if (typeof value === "string" && value.trim()) return [plain(value, 80)];
+    return [];
+  }
+
+  function safeHorizon(value, fallback) {
+    const text = plain(value, 8);
+    if (!text || /[0-9０-９]|天|月|年|周|日/.test(text)) return fallback;
+    return text;
+  }
+
+  function readRows(list, count, map) {
+    const out = [];
+    (Array.isArray(list) ? list : []).slice(0, count).forEach(function (item) {
+      const row = map(item || {});
+      if (row) out.push(row);
+    });
+    return out;
+  }
+
+  function hydrate(raw, goal, time) {
+    const base = decompose(goal, time);
+    if (!base) throw new Error("empty");
+    if (!raw || typeof raw !== "object") throw new Error("shape");
+    const essence = plain(raw.essence, 180);
+    if (essence.length < 8) throw new Error("essence");
+    const longTerm = readRows(raw.longTerm, 3, function (item) {
+      const title = plain(item.title, 16);
+      const why = plain(item.why || item.detail, 140);
+      if (!title || !why) return null;
+      return { horizon: plain(item.horizon, 8), title: title, why: why, moves: asMoves(item.moves) };
+    });
+    const shortTerm = readRows(raw.shortTerm, 3, function (item) {
+      const title = plain(item.title, 16);
+      const why = plain(item.why || item.detail, 140);
+      if (!title || !why) return null;
+      return { horizon: plain(item.horizon, 8), title: title, why: why, moves: asMoves(item.moves) };
+    });
+    const daily = readRows(raw.daily, 5, function (item) {
+      const title = plain(item.title, 24);
+      const detail = plain(item.detail || item.why, 120);
+      if (!title || !detail) return null;
+      const minutes = Math.max(15, Math.min(90, Math.round(Number(item.minutes) || 25)));
+      return { title: title, minutes: minutes, detail: detail };
+    });
+    if (longTerm.length < 3) longTerm.push.apply(longTerm, base.longTerm.slice(longTerm.length));
+    if (shortTerm.length < 3) shortTerm.push.apply(shortTerm, base.shortTerm.slice(shortTerm.length));
+    if (daily.length < 3) throw new Error("daily");
+    while (daily.length < 5) daily.push(base.daily[daily.length]);
+    longTerm.forEach(function (item, i) {
+      item.id = "l" + (i + 1);
+      item.horizon = safeHorizon(item.horizon, base.longTerm[i].horizon);
+    });
+    shortTerm.forEach(function (item, i) {
+      item.id = "s" + (i + 1);
+      item.horizon = safeHorizon(item.horizon, base.shortTerm[i].horizon);
+    });
+    daily.forEach(function (item, i) { item.id = "d" + (i + 1); });
+    const plan = {
+      v: 3,
+      id: base.id,
+      goal: base.goal,
+      time: base.time,
+      focus: base.focus,
+      domain: base.domain,
+      essence: essence,
+      boardNote: "你的时间：" + base.time,
+      attackNote: "先做的事也在这段时间里，不另排日期。",
+      longTerm: longTerm.slice(0, 3),
+      shortTerm: shortTerm.slice(0, 3),
+      daily: daily.slice(0, 5),
+      source: "model",
+    };
+    plan.tree = buildTree(plan);
+    plan.signature = plan.daily.map(function (item) { return item.title; }).join("|");
+    return plan;
+  }
+
+  function completionsUrl(base) {
+    const trimmed = String(base || "").trim().replace(/\/+$/, "");
+    if (!/^https?:\/\//i.test(trimmed)) throw new Error("base");
+    if (/[?#]/.test(trimmed)) throw new Error("base");
+    if (/\/chat\/completions$/i.test(trimmed)) return trimmed;
+    return trimmed + "/chat/completions";
+  }
+
   function decompose(goal, time) {
     const cleanGoal = String(goal || "").replace(/\s+/g, " ").trim();
     const cleanTime = String(time || "").replace(/\s+/g, " ").trim();
@@ -301,5 +392,5 @@
     return plan;
   }
 
-  return { decompose: decompose };
+  return { decompose: decompose, hydrate: hydrate, completionsUrl: completionsUrl };
 });
