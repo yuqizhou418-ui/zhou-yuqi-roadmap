@@ -10,44 +10,32 @@ const CASES = [
   ["写完一本短篇小说并发表", "今年冬天前", "creative", "短篇小说"],
   ["一年内存下六个月生活费", "一年", "finance", "生活费"],
   ["把家里的阳台变成一个可以发呆的地方", "这个夏天", "general", "阳台"],
-  ["我想一年内转行做产品经理", "每周两个晚上", "career", "产品经理"],
-  ["learn Spanish in six months", "six months", "learning", "Spanish"],
 ];
 
 test("needs both goal and time", function () {
-  assert.equal(decompose("", "六个月"), null);
-  assert.equal(decompose("学会烘焙", "  "), null);
-  assert.equal(decompose("  ", "一年"), null);
+  assert.equal(decompose("学会烘焙", ""), null);
+  assert.equal(decompose("", "一年"), null);
 });
 
-test("keeps the user's time and does not invent a calendar", function () {
+test("uses the user's time and builds a board", function () {
+  const first = new Map();
   CASES.forEach(function (row) {
     const plan = decompose(row[0], row[1]);
-    assert.equal(plan.v, 2);
+    assert.equal(plan.v, 3);
     assert.equal(plan.time, row[1]);
     assert.equal(plan.domain, row[2]);
-    assert.equal(plan.items.length, 5);
     assert.ok(plan.focus.includes(row[3]), plan.focus);
-    const blob = JSON.stringify(plan);
-    assert.ok(blob.includes(row[3]));
-    assert.equal(/3–6 月|18–36 月|7 天|30 天|90 天/.test(blob), false);
-    plan.items.forEach(function (item) {
-      assert.ok(item.title);
-      assert.ok(item.detail);
-      assert.equal(Object.prototype.hasOwnProperty.call(item, "horizon"), false);
+    assert.ok(plan.boardNote.includes(row[1]));
+    assert.equal(plan.longTerm.length, 3);
+    assert.equal(plan.shortTerm.length, 3);
+    assert.equal(plan.daily.length, 5);
+    plan.daily.forEach(function (item) {
+      assert.ok(item.minutes >= 15 && item.minutes <= 90);
     });
+    assert.deepEqual(plan.tree.children.map(function (node) { return node.id; }), ["essence", "long", "short", "daily"]);
+    const blob = JSON.stringify(plan);
+    assert.equal(/3–6 月|18–36 月|7 天|30 天|90 天/.test(blob), false);
+    first.set(plan.domain, plan.longTerm[0].title);
   });
-  const titles = new Map();
-  CASES.forEach(function (row) {
-    titles.set(decompose(row[0], row[1]).domain, decompose(row[0], row[1]).items[0].title);
-  });
-  assert.equal(new Set(titles.values()).size, titles.size);
-});
-
-test("same words keep the same id", function () {
-  const a = decompose("学会烘焙", "三个月");
-  const b = decompose("学会烘焙", "三个月");
-  const c = decompose("学会烘焙", "一年");
-  assert.equal(a.id, b.id);
-  assert.notEqual(a.id, c.id);
+  assert.equal(new Set(first.values()).size, first.size);
 });

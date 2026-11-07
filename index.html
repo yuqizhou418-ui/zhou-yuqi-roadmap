@@ -3,83 +3,123 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="写下想达成的目标，和你给它的时间。原点列出要做的事，进度只留在这台浏览器。" />
+  <meta name="description" content="先写下想达成的目标，和你给它的时间。进入后看思维导图、长期大局、短期攻杀与每日行动。" />
   <meta name="theme-color" content="#f6f4f1" />
   <link rel="canonical" href="https://yuqizhou418-ui.github.io/zhou-yuqi-roadmap/" />
   <title>原点</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body data-mode="entry">
   <a class="skip-link" href="#goal">跳到输入</a>
   <noscript>
-    <p class="noscript-note">列出清单需要 JavaScript。勾选和记录只留在这台浏览器里。</p>
+    <p class="noscript-note">进入主界面需要 JavaScript。勾选和记录只留在这台浏览器里。</p>
   </noscript>
+  <div class="wash" aria-hidden="true"></div>
 
-  <div class="wrap">
-    <header class="bar">
-      <a class="brand" href="./" id="brand">原点</a>
+  <header class="top">
+    <a class="brand" href="./" id="brand">原点</a>
+    <div class="top-actions">
+      <button type="button" id="sound" aria-pressed="false" aria-label="打开环境声">声</button>
       <button type="button" id="settings-open">接口</button>
-    </header>
+    </div>
+  </header>
 
-    <main id="main">
-      <h1>想达成的目标，和你给它的时间。</h1>
-      <p class="lead">你来写。页面把它列成可以勾选的事，进度只留在这台浏览器。</p>
+  <main id="main">
+    <section class="entry" id="entry">
+      <div class="entry-inner">
+        <h1>想达成的目标，和你给它的时间。</h1>
+        <p class="lead">先写这两件。进入之后再看整盘。</p>
+        <form id="composer">
+          <label for="goal">想达成的目标</label>
+          <textarea id="goal" rows="2" maxlength="400" placeholder="用你自己的话" required></textarea>
+          <label for="time">时间</label>
+          <input id="time" type="text" maxlength="80" placeholder="例如：六个月，或每周三个晚上" autocomplete="off" required />
+          <p class="form-error" id="form-error" role="status"></p>
+          <button type="submit" id="submit">进入</button>
+        </form>
+        <section id="recent-panel" class="recent" hidden>
+          <h2>最近</h2>
+          <ul id="recent-list"></ul>
+        </section>
+      </div>
+    </section>
 
-      <form id="composer">
-        <label for="goal">想达成的目标</label>
-        <textarea id="goal" name="goal" rows="2" maxlength="400" placeholder="用你自己的话" required></textarea>
-
-        <label for="time">时间</label>
-        <input id="time" name="time" type="text" maxlength="80" placeholder="例如：六个月，或每周三个晚上" autocomplete="off" required />
-
-        <p class="form-error" id="form-error" role="status"></p>
-        <button type="submit" id="submit">列出要做的事</button>
+    <section class="board" id="board" aria-labelledby="board-label">
+      <h2 class="sr" id="board-label" tabindex="-1">大局</h2>
+      <form class="goal-edit" id="edit-form">
+        <div class="goal-edit-row">
+          <label class="grow">
+            <span>想达成的目标</span>
+            <textarea id="edit-goal" rows="1" maxlength="400"></textarea>
+          </label>
+          <label class="time-field">
+            <span>时间</span>
+            <input id="edit-time" type="text" maxlength="80" autocomplete="off" />
+          </label>
+          <button type="submit" class="split-btn">重新进入</button>
+        </div>
+        <p class="essence" id="essence"></p>
       </form>
 
-      <section id="result" class="result" hidden aria-labelledby="result-title">
-        <div class="result-head">
-          <h2 id="result-title">要做的事</h2>
-          <p id="progress">已完成 0 / 0</p>
+      <div class="stage-grid">
+        <aside class="territory territory-long">
+          <div class="inner">
+            <h2 id="long-title">长期 · 大局观</h2>
+            <p class="territory-lead" id="board-note"></p>
+            <ol class="milestones" id="long-list"></ol>
+          </div>
+        </aside>
+        <div class="map-stage">
+          <p class="map-kicker">思维导图</p>
+          <div class="map-viewport" id="map-viewport" tabindex="0" aria-label="思维导图。点开节点展开下一层，可拖动。"></div>
+          <p class="map-note" id="map-note" aria-live="polite"></p>
+          <div class="map-tools">
+            <button type="button" id="zoom-in" aria-label="放大">＋</button>
+            <button type="button" id="zoom-out" aria-label="缩小">－</button>
+            <button type="button" id="zoom-reset">回中</button>
+          </div>
         </div>
-        <p id="time-line" class="time-line"></p>
-        <p id="note" class="note"></p>
-        <ul id="list" class="list"></ul>
-        <button type="button" class="quiet" id="clear-checks">清除勾选</button>
-      </section>
-
-      <section id="recent-panel" class="recent" hidden>
-        <h2>最近</h2>
-        <ul id="recent-list"></ul>
-      </section>
-    </main>
-  </div>
+        <aside class="territory territory-short">
+          <div class="inner">
+            <h2 id="short-title">短期 · 攻杀</h2>
+            <p class="territory-lead" id="attack-note"></p>
+            <ol class="milestones" id="short-list"></ol>
+          </div>
+        </aside>
+        <section class="daily" aria-labelledby="daily-title">
+          <div class="daily-head">
+            <div>
+              <h2 id="daily-title">每日具体行动</h2>
+              <p id="daily-msg">勾选只留在这台浏览器。</p>
+            </div>
+            <div class="daily-tools">
+              <span id="daily-count">0 / 5</span>
+              <button type="button" class="text-btn" id="clear-checks">清除勾选</button>
+            </div>
+          </div>
+          <ul class="daily-list" id="daily-list"></ul>
+        </section>
+      </div>
+    </section>
+  </main>
 
   <div class="drawer" id="settings-drawer" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="drawer-panel">
       <button type="button" class="drawer-close" data-close>关闭</button>
       <p class="kicker">预留</p>
       <h2 id="settings-title">接口</h2>
-      <p>这一版不会读取这里的内容，也不会发出请求。地址、密钥和模型只写在这台浏览器里，供以后使用。</p>
-      <label class="field">
-        <span>Base URL</span>
-        <input id="llm-base" type="url" inputmode="url" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" />
-      </label>
-      <label class="field">
-        <span>API Key</span>
-        <input id="llm-key" type="password" autocomplete="off" spellcheck="false" />
-      </label>
-      <label class="field">
-        <span>Model</span>
-        <input id="llm-model" type="text" placeholder="模型名" autocomplete="off" spellcheck="false" />
-      </label>
+      <p>这一版不会读取这里的内容，也不会发出请求。地址、密钥和模型只写在这台浏览器里。</p>
+      <label class="field"><span>Base URL</span><input id="llm-base" type="url" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" /></label>
+      <label class="field"><span>API Key</span><input id="llm-key" type="password" autocomplete="off" spellcheck="false" /></label>
+      <label class="field"><span>Model</span><input id="llm-model" type="text" placeholder="模型名" autocomplete="off" spellcheck="false" /></label>
       <p class="fine" id="settings-msg" role="status"></p>
       <div class="drawer-actions">
         <button type="button" id="settings-save">保存</button>
-        <button type="button" class="quiet" id="settings-clear">清除</button>
+        <button type="button" class="text-btn" id="settings-clear">清除</button>
       </div>
     </div>
   </div>
