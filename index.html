@@ -3,154 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="写下任务或理想。原点用第一性原理把它拆成思维导图、长期大局、短期攻杀与每日行动。" />
-  <meta name="theme-color" content="#12110e" />
+  <meta name="description" content="写下想达成的目标，和你给它的时间。原点列出要做的事，进度只留在这台浏览器。" />
+  <meta name="theme-color" content="#f6f4f1" />
   <link rel="canonical" href="https://yuqizhou418-ui.github.io/zhou-yuqi-roadmap/" />
   <title>原点</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body data-mode="home">
+<body>
   <a class="skip-link" href="#goal">跳到输入</a>
   <noscript>
-    <p class="noscript-note">原点需要 JavaScript 才能拆解目标。拆解结果、勾选和可选密钥都只留在这台浏览器里。</p>
+    <p class="noscript-note">列出清单需要 JavaScript。勾选和记录只留在这台浏览器里。</p>
   </noscript>
 
-  <div class="grain" aria-hidden="true"></div>
-  <div class="wash" aria-hidden="true"></div>
-  <div class="grid-ghost" aria-hidden="true"></div>
-  <p class="gallery-caption" aria-hidden="true">大局先于手段</p>
-
-  <header class="bar">
-    <a class="brand" href="./" id="brand">
-      <span class="brand-stone" aria-hidden="true"></span>
-      <span class="brand-name">
-        <strong>原点</strong>
-        <em>First Board</em>
-      </span>
-    </a>
-    <div class="bar-actions">
-      <button type="button" id="sound" aria-pressed="false" aria-label="打开环境声">声</button>
-      <button type="button" id="about-open">关于方法</button>
+  <div class="wrap">
+    <header class="bar">
+      <a class="brand" href="./" id="brand">原点</a>
       <button type="button" id="settings-open">接口</button>
-    </div>
-  </header>
+    </header>
 
-  <main id="main">
-    <section class="home" id="home">
-      <form class="composer" id="composer">
-        <label for="goal">任务或理想</label>
-        <textarea id="goal" name="goal" rows="1" maxlength="400" placeholder="例如：一年内能独立负责一条产品线" aria-describedby="goal-hint"></textarea>
-        <p class="hint" id="goal-hint">写下一件要抵达的事。原点从不可再拆的事实开始，整理成大局、攻杀与每日的一手。</p>
+    <main id="main">
+      <h1>想达成的目标，和你给它的时间。</h1>
+      <p class="lead">你来写。页面把它列成可以勾选的事，进度只留在这台浏览器。</p>
+
+      <form id="composer">
+        <label for="goal">想达成的目标</label>
+        <textarea id="goal" name="goal" rows="2" maxlength="400" placeholder="用你自己的话" required></textarea>
+
+        <label for="time">时间</label>
+        <input id="time" name="time" type="text" maxlength="80" placeholder="例如：六个月，或每周三个晚上" autocomplete="off" required />
+
         <p class="form-error" id="form-error" role="status"></p>
-        <div class="composer-actions">
-          <button type="submit" class="split-btn">拆开</button>
-          <button type="button" class="text-btn" id="sample">示例</button>
-        </div>
+        <button type="submit" id="submit">列出要做的事</button>
       </form>
-      <aside class="recent-panel" id="recent-panel" hidden>
-        <p class="recent-kicker">近期</p>
+
+      <section id="result" class="result" hidden aria-labelledby="result-title">
+        <div class="result-head">
+          <h2 id="result-title">要做的事</h2>
+          <p id="progress">已完成 0 / 0</p>
+        </div>
+        <p id="time-line" class="time-line"></p>
+        <p id="note" class="note"></p>
+        <ul id="list" class="list"></ul>
+        <button type="button" class="quiet" id="clear-checks">清除勾选</button>
+      </section>
+
+      <section id="recent-panel" class="recent" hidden>
+        <h2>最近</h2>
         <ul id="recent-list"></ul>
-      </aside>
-    </section>
-
-    <section class="ritual" id="ritual" data-stage="essence" aria-labelledby="ritual-phrase">
-      <div class="ink" aria-hidden="true"></div>
-      <p class="ritual-stage" id="ritual-stage" aria-live="polite">澄清本质</p>
-      <h2 class="ritual-phrase" id="ritual-phrase"></h2>
-      <div class="ritual-mid">
-        <p class="ritual-sub" id="ritual-sub"></p>
-        <ul class="ritual-assumptions" id="ritual-assumptions" aria-hidden="true"></ul>
-        <ul class="bloom" id="bloom" aria-hidden="true"></ul>
-      </div>
-      <div class="ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-      <ol class="stage-dots" aria-hidden="true">
-        <li data-s="essence"></li>
-        <li data-s="strip"></li>
-        <li data-s="atoms"></li>
-        <li data-s="split"></li>
-        <li data-s="daily"></li>
-      </ol>
-      <button type="button" class="text-btn skip" id="skip">跳过</button>
-    </section>
-
-    <section class="board" id="board" aria-labelledby="board-label">
-      <h2 class="sr" id="board-label" tabindex="-1">拆解结果</h2>
-      <form class="goal-edit" id="edit-form">
-        <label for="edit-goal">任务或理想</label>
-        <div class="goal-edit-row">
-          <textarea id="edit-goal" rows="1" maxlength="400" autocomplete="off"></textarea>
-          <button type="submit" class="split-btn">重新拆解</button>
-        </div>
-        <p class="essence" id="essence"></p>
-        <div class="goal-meta">
-          <p id="status" role="status"></p>
-          <details>
-            <summary>剥去的假设</summary>
-            <ul id="assumptions"></ul>
-          </details>
-        </div>
-      </form>
-
-      <div class="stage-grid">
-        <aside class="territory territory-long">
-          <div class="inner">
-            <h2 class="kicker" id="long-title">长期 · 大局观</h2>
-            <p class="territory-lead" id="board-note"></p>
-            <ol class="milestones" id="long-list"></ol>
-          </div>
-        </aside>
-
-        <div class="map-stage">
-          <p class="map-kicker">思维导图</p>
-          <div class="map-viewport" id="map-viewport" tabindex="0" aria-label="思维导图。点开棋子展开下一层，拖动或方向键可以移步。"></div>
-          <p class="map-note" id="map-note" aria-live="polite"></p>
-          <div class="map-tools">
-            <button type="button" id="zoom-in" aria-label="放大">＋</button>
-            <button type="button" id="zoom-out" aria-label="缩小">－</button>
-            <button type="button" id="zoom-reset">回中</button>
-          </div>
-        </div>
-
-        <aside class="territory territory-short">
-          <div class="inner">
-            <h2 class="kicker" id="short-title">短期 · 攻杀</h2>
-            <p class="territory-lead" id="attack-note"></p>
-            <ol class="milestones" id="short-list"></ol>
-          </div>
-        </aside>
-
-        <section class="daily" aria-labelledby="daily-title">
-          <div class="daily-head">
-            <div>
-              <h2 id="daily-title">每日具体行动</h2>
-              <p id="daily-msg">每手 15–90 分钟。勾选只留在这台浏览器。</p>
-            </div>
-            <div class="daily-tools">
-              <span id="daily-count">0 / 5</span>
-              <button type="button" class="text-btn" id="clear-checks">清除勾选</button>
-            </div>
-          </div>
-          <ul class="daily-list" id="daily-list"></ul>
-        </section>
-      </div>
-    </section>
-  </main>
-
-  <div class="drawer" id="about-drawer" hidden role="dialog" aria-modal="true" aria-labelledby="about-title">
-    <div class="drawer-panel">
-      <button type="button" class="drawer-close" data-close>关闭</button>
-      <p class="kicker">方法</p>
-      <h2 id="about-title">关于方法</h2>
-      <p>原点把一件目标拆回可以站稳的事实。</p>
-      <p>先写下完成时，外界能指认的状态。再把习惯、身份和别人的时间表从计划里拿开。剩下四类积木：技能、资产、约束、反馈环。</p>
-      <p>围棋里，大局观看整盘的方向与厚薄，对应这里的长期，大约三个月到三年的棋形。攻杀意识看已经接触的局部，对应七到九十天里分得出胜负的手。每日行动是落子，每手十五到九十分钟，可以勾选，可以累积。</p>
-      <p>这一版的推演在这台浏览器里完成，可以离线。右上角「接口」只是预留：可以记下地址、密钥和模型，拆解不会读取，也不会发出请求。</p>
-      <p>勾选和近期目标也只留在本机。</p>
-    </div>
+      </section>
+    </main>
   </div>
 
   <div class="drawer" id="settings-drawer" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -158,7 +63,7 @@
       <button type="button" class="drawer-close" data-close>关闭</button>
       <p class="kicker">预留</p>
       <h2 id="settings-title">接口</h2>
-      <p>这一版拆解始终使用本机引擎。这里的地址、密钥和模型只写在这台浏览器里，供以后接通时使用，现在不会被读取，也不会发出请求。</p>
+      <p>这一版不会读取这里的内容，也不会发出请求。地址、密钥和模型只写在这台浏览器里，供以后使用。</p>
       <label class="field">
         <span>Base URL</span>
         <input id="llm-base" type="url" inputmode="url" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" />
@@ -169,13 +74,12 @@
       </label>
       <label class="field">
         <span>Model</span>
-        <input id="llm-model" type="text" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false" />
+        <input id="llm-model" type="text" placeholder="模型名" autocomplete="off" spellcheck="false" />
       </label>
-      <p class="fine">保存不会联网。密钥不会进入仓库。</p>
-      <p class="form-error" id="settings-msg" role="status"></p>
+      <p class="fine" id="settings-msg" role="status"></p>
       <div class="drawer-actions">
-        <button type="button" class="split-btn" id="settings-save">保存</button>
-        <button type="button" class="text-btn" id="settings-clear">清除</button>
+        <button type="button" id="settings-save">保存</button>
+        <button type="button" class="quiet" id="settings-clear">清除</button>
       </div>
     </div>
   </div>
